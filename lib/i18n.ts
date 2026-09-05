@@ -72,7 +72,7 @@ export const LANDING: Record<Locale, LandingCopy> = {
     openMenu: "فتح القائمة",
     closeMenu: "إغلاق القائمة",
     brand: "ألواح هب",
-    heroBadge: "عربي أصيل · مدى · Apple Pay",
+    heroBadge: "عربي · إنجليزي",
     heroTitle: "مركزك الذكي لإدارة المهام والمشاريع بسلاسة عربية",
     heroBody:
       "أدوات مثل Monday وClickUp قوية، لكنها معقّدة وأسعارها مرتفعة وواجهتها ليست عربية من الأساس. ألواح هب تمنحك كانبان سريعاً من اليمين لليسار، قوالب جاهزة، ودفعاً محلياً بمدى وApple Pay — دون أن تضيع أسبوعاً في إعداد الأداة.",
@@ -146,7 +146,7 @@ export const LANDING: Record<Locale, LandingCopy> = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     brand: "AlwahHub",
-    heroBadge: "Arabic-first · Mada · Apple Pay",
+    heroBadge: "Arabic · English",
     heroTitle: "Your smart hub for tasks and projects — in Arabic, simply",
     heroBody:
       "Tools like Monday and ClickUp are powerful, but they are complex, expensive, and not Arabic-first. AlwahHub gives you a fast RTL kanban, ready templates, and local checkout with Mada and Apple Pay — without a week of setup.",
