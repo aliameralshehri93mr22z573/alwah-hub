@@ -109,7 +109,7 @@ export default async function Home() {
             <ul className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
               <li className="flex items-center gap-2">
                 <Languages className="size-4 shrink-0 text-accent" />
-                RTL عربي كامل
+                عربي بالكامل
               </li>
               <li className="flex items-center gap-2">
                 <CreditCard className="size-4 shrink-0 text-accent" />
@@ -144,7 +144,7 @@ export default async function Home() {
               <Smartphone className="size-5 text-accent" />
               <h2 className="mt-3 font-bold">مصمَّم للجوال أولاً</h2>
               <p className="mt-2 text-sm leading-7 text-slate-300">
-                ألواح تُمرَّر أفقياً ومهام تُفتح من الأسفل كما يتوقع المستخدم العربي.
+                ألواح تُمرّر أفقياً ومهام تُفتح من الأسفل كما يتوقع المستخدم.
               </p>
             </article>
           </div>
