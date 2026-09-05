@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { CheckoutButton, priceLabel } from "@/components/checkout-button";
+import { useLocale } from "@/components/locale-provider";
+import { MARKETING_UI, PLAN_I18N } from "@/lib/i18n-catalog";
 import { PLANS, type PlanTier } from "@/lib/plans";
 
 const ORDER: PlanTier[] = ["free", "solo", "team", "agency"];
@@ -12,11 +16,16 @@ export function LandingPricing({
   current: PlanTier;
   signedIn: boolean;
 }) {
+  const { locale } = useLocale();
+  const ui = MARKETING_UI[locale];
+  const catalog = PLAN_I18N[locale];
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {ORDER.map((id) => {
         const plan = PLANS[id];
-        const price = priceLabel(id);
+        const copy = catalog[id];
+        const price = priceLabel(id, locale);
         return (
           <article
             key={id}
@@ -27,16 +36,18 @@ export function LandingPricing({
             }`}
           >
             {plan.highlighted ? (
-              <p className="mb-2 text-xs font-semibold text-accent">الأكثر اختياراً</p>
+              <p className="mb-2 text-xs font-semibold text-accent">
+                {ui.mostChosen}
+              </p>
             ) : null}
-            <h3 className="text-xl font-bold">{plan.name}</h3>
-            <p className="mt-1 text-sm text-slate-300">{plan.tagline}</p>
+            <h3 className="text-xl font-bold">{copy.name}</h3>
+            <p className="mt-1 text-sm text-slate-300">{copy.tagline}</p>
             <p className="mt-4 flex flex-wrap items-baseline gap-1">
               <span className="text-4xl font-extrabold">{price.amount}</span>
               <span className="text-sm text-slate-300">{price.suffix}</span>
             </p>
             <ul className="mt-5 flex-1 space-y-2 text-sm">
-              {plan.features.map((feature) => (
+              {copy.features.map((feature) => (
                 <li key={feature} className="flex items-start gap-2">
                   <Check className="mt-0.5 size-4 shrink-0 text-accent" />
                   {feature}
@@ -48,7 +59,7 @@ export function LandingPricing({
                 href="/register"
                 className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full border border-white/15 text-sm hover:bg-white/10"
               >
-                ابدأ مجاناً
+                {ui.startFree}
               </Link>
             ) : (
               <div className="mt-6 flex flex-1 flex-col justify-end">

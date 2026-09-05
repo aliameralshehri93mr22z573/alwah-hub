@@ -1,27 +1,25 @@
+"use client";
+
 import { Check } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
+import { MARKETING_UI, TEMPLATE_LANDING } from "@/lib/i18n-catalog";
 
 export function HeroBoardPreview() {
+  const { locale } = useLocale();
+  const ui = MARKETING_UI[locale];
+  const sales = TEMPLATE_LANDING[locale].sales;
   const columns = [
-    {
-      title: "عميل محتمل",
-      tasks: ["عرض سعر لشركة النور", "متابعة عميل الأحساء"],
-    },
-    {
-      title: "جاري التفاوض",
-      tasks: ["اتفاق على بنود العقد"],
-    },
-    {
-      title: "مغلقة بنجاح",
-      tasks: ["توقيع باقة الفرق"],
-    },
+    { title: sales.columns[0], tasks: [ui.heroTasks[0], ui.heroTasks[1]] },
+    { title: sales.columns[1], tasks: [ui.heroTasks[2]] },
+    { title: sales.columns[3] ?? sales.columns[2], tasks: [ui.heroTasks[3]] },
   ];
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0B1224] p-4 shadow-2xl shadow-brand/20 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">مسار المبيعات</p>
+        <p className="text-sm font-semibold">{ui.heroBoardTitle}</p>
         <span className="rounded-full bg-accent/15 px-3 py-1 text-xs text-accent">
-          عربي · RTL
+          {ui.heroBoardBadge}
         </span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
@@ -46,7 +44,7 @@ export function HeroBoardPreview() {
       </div>
       <p className="mt-4 inline-flex items-center gap-2 text-xs text-slate-400">
         <Check className="size-3.5 text-accent" />
-        مدى و Apple Pay داخل نفس المساحة
+        {ui.heroBoardFooter}
       </p>
     </div>
   );
