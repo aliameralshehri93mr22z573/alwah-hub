@@ -162,27 +162,111 @@ export async function inviteWorkspaceMember(
   return { ok: true };
 }
 
-async function findUserIdByEmail(email: string) {
-  if (isSupabaseConfigured()) {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    if (data?.id) {
-      return data.id as string;
+function escapeIlikeExact(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+async function syncProfileEmail(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  email: string,
+) {
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (data?.id) {
+    await admin.from("profiles").update({ email }).eq("id", userId);
+    return;
+  }
+
+  await admin.from("profiles").insert({
+    id: userId,
+    email,
+    plan: "free",
+  });
+}
+
+async function findAuthUserIdByEmail(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  email: string,
+) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && serviceKey) {
+    try {
+      const response = await fetch(
+        `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+          },
+          cache: "no-store",
+        },
+      );
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          users?: { id: string; email?: string | null }[];
+        };
+        const match = payload.users?.find(
+          (item) => item.email?.toLowerCase() === email,
+        );
+        if (match?.id) {
+          return { id: match.id, email: match.email ?? email };
+        }
+      }
+    } catch {
+      // Fall through to a bounded listUsers scan.
     }
   }
 
-  const admin = createAdminClient();
-  if (!admin) {
+  const { data } = await admin.auth.admin.listUsers({ perPage: 200, page: 1 });
+  const match = data.users.find((item) => item.email?.toLowerCase() === email);
+  return match?.id
+    ? { id: match.id, email: match.email ?? email }
+    : null;
+}
+
+async function findUserIdByEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) {
     return null;
   }
 
-  const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
-  const match = data.users.find(
-    (item) => item.email?.toLowerCase() === email,
-  );
-  return match?.id ?? null;
+  const admin = createAdminClient();
+  if (admin) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", escapeIlikeExact(normalized))
+      .maybeSingle();
+    if (profile?.id) {
+      return profile.id as string;
+    }
+
+    const byAuth = await findAuthUserIdByEmail(admin, normalized);
+    if (byAuth?.id) {
+      await syncProfileEmail(admin, byAuth.id, byAuth.email);
+      return byAuth.id;
+    }
+  }
+
+  const supabase = await createClient();
+  const rpc = await supabase.rpc("lookup_profile_id_by_email", {
+    p_email: normalized,
+  });
+  if (!rpc.error && typeof rpc.data === "string" && rpc.data) {
+    return rpc.data;
+  }
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", escapeIlikeExact(normalized))
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
 }

@@ -19,6 +19,12 @@ export async function ensureProfile(supabase: SupabaseClient, user: User) {
     .maybeSingle();
 
   if (existing.data?.id) {
+    if (user.email) {
+      await supabase
+        .from("profiles")
+        .update({ email: user.email })
+        .eq("id", user.id);
+    }
     return;
   }
 

@@ -104,6 +104,8 @@ create index if not exists columns_board_id_position_idx on public.columns (boar
 create index if not exists tasks_column_id_position_idx on public.tasks (column_id, position);
 create index if not exists tasks_due_date_idx on public.tasks (due_date);
 create index if not exists tasks_custom_fields_gin_idx on public.tasks using gin (custom_fields);
+create index if not exists profiles_email_lower_idx
+  on public.profiles (lower(btrim(email)));
 
 --------------------------------------------------------------------------------
 -- Helpers (SECURITY DEFINER to avoid RLS recursion)
@@ -708,3 +710,41 @@ $$;
 
 revoke all on function public.complete_onboarding(public.template_type) from public;
 grant execute on function public.complete_onboarding(public.template_type) to authenticated;
+
+--------------------------------------------------------------------------------
+-- Invite: lookup a user by email without exposing other profiles via RLS
+--------------------------------------------------------------------------------
+
+update public.profiles p
+set email = u.email
+from auth.users u
+where p.id = u.id
+  and (p.email is null or btrim(p.email) = '');
+
+create or replace function public.lookup_profile_id_by_email(p_email text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (
+      select p.id
+      from public.profiles p
+      where p.email is not null
+        and lower(btrim(p.email)) = lower(btrim(p_email))
+      limit 1
+    ),
+    (
+      select u.id
+      from auth.users u
+      where u.email is not null
+        and lower(btrim(u.email)) = lower(btrim(p_email))
+      limit 1
+    )
+  );
+$$;
+
+revoke all on function public.lookup_profile_id_by_email(text) from public;
+grant execute on function public.lookup_profile_id_by_email(text) to authenticated, service_role;
