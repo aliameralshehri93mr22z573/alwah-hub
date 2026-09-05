@@ -12,8 +12,15 @@ type BoardPageProps = {
 export default async function DashboardBoardPage({ params }: BoardPageProps) {
   const { id } = await params;
 
-  if (!isSupabaseConfigured()) {
-    return <BoardWorkspace initialBoard={createDemoBoard()} live={false} />;
+  const demoBoard = id === "demo" || id.startsWith("demo-");
+
+  if (!isSupabaseConfigured() || demoBoard) {
+    return (
+      <BoardWorkspace
+        initialBoard={createDemoBoard()}
+        live={false}
+      />
+    );
   }
 
   const supabase = await createClient();

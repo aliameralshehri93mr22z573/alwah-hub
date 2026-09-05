@@ -25,7 +25,10 @@ type BoardWorkspaceProps = {
   live: boolean;
 };
 
-export function BoardWorkspace({ initialBoard, live }: BoardWorkspaceProps) {
+export function BoardWorkspace({
+  initialBoard,
+  live = true,
+}: BoardWorkspaceProps) {
   const { app } = useLocale();
   const [board, setBoard] = useState(initialBoard);
   const [view, setView] = useState<"kanban" | "table">("kanban");
@@ -43,9 +46,13 @@ export function BoardWorkspace({ initialBoard, live }: BoardWorkspaceProps) {
     }
   }, [board.id, live]);
 
-  useBoardRealtime(board.id, () => {
-    void reload();
-  });
+  useBoardRealtime(
+    board.id,
+    () => {
+      void reload();
+    },
+    live,
+  );
 
   const selected = selectedId ? findTask(board, selectedId)?.task ?? null : null;
 

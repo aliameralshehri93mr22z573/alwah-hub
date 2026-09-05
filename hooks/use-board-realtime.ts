@@ -2,12 +2,17 @@ import { useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
-export function useBoardRealtime(boardId: string, onChange: () => void) {
+export function useBoardRealtime(
+  boardId: string,
+  onChange: () => void,
+  enabled = true,
+) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    if (!isSupabaseConfigured() || boardId.startsWith("demo-")) {
+    const demoBoard = boardId === "demo" || boardId.startsWith("demo-");
+    if (!enabled || demoBoard || !isSupabaseConfigured()) {
       return;
     }
 
@@ -29,5 +34,5 @@ export function useBoardRealtime(boardId: string, onChange: () => void) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [boardId]);
+  }, [boardId, enabled]);
 }

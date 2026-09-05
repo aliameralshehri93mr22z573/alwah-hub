@@ -20,7 +20,22 @@ export default async function OnboardingPage() {
       redirect("/dashboard");
     }
 
-    await ensureWorkspace(supabase, user);
+    try {
+      await ensureWorkspace(supabase, user);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "تعذر تجهيز مساحة العمل.";
+      return (
+        <main className="mx-auto flex min-h-full w-full max-w-xl flex-col px-6 py-16">
+          <h1 className="text-2xl font-extrabold">تعذر فتح التهيئة</h1>
+          <p className="mt-3 leading-8 text-slate-300">{message}</p>
+          <p className="mt-4 text-sm leading-7 text-slate-400">
+            إذا سجّلت حسابك قبل تشغيل المخطط، نفّذ SQL تعويض الصفوف في
+            profiles ثم أعد تحميل الصفحة.
+          </p>
+        </main>
+      );
+    }
   }
 
   return (

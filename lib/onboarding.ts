@@ -11,6 +11,31 @@ type ProvisionResult = {
   boardId: string | null;
 };
 
+export async function ensureProfile(supabase: SupabaseClient, user: User) {
+  const existing = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (existing.data?.id) {
+    return;
+  }
+
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined)?.trim() || "";
+  const { error } = await supabase.from("profiles").insert({
+    id: user.id,
+    full_name: fullName,
+    email: user.email ?? null,
+    plan: "free",
+  });
+
+  if (error && error.code !== "23505") {
+    throw error;
+  }
+}
+
 function workspaceNameFor(user: User, templateType: TemplateType) {
   const fullName =
     (user.user_metadata?.full_name as string | undefined)?.trim() || "العمل";
@@ -23,6 +48,8 @@ export async function ensureWorkspace(
   user: User,
   templateType: TemplateType = DEFAULT_TEMPLATE,
 ) {
+  await ensureProfile(supabase, user);
+
   const existing = await supabase
     .from("workspaces")
     .select("id")
