@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
+import { LocaleProvider } from "@/components/locale-provider";
 import { MobileNav } from "@/components/mobile-nav";
+import { getRequestLocale } from "@/lib/i18n-server";
+import { localeDir, localeLang } from "@/lib/i18n";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -51,16 +54,21 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getRequestLocale();
+
   return (
     <html
-      lang="ar"
-      dir="rtl"
+      lang={localeLang(locale)}
+      dir={localeDir(locale)}
+      data-scroll-behavior="smooth"
       className={`${cairo.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-primary font-sans text-foreground">
-        {children}
-        <MobileNav />
+        <LocaleProvider locale={locale}>
+          {children}
+          <MobileNav />
+        </LocaleProvider>
       </body>
     </html>
   );

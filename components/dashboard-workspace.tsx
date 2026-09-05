@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, UserPlus } from "lucide-react";
+import { LanguageToggle } from "@/components/language-toggle";
 import {
   createWorkspaceBoard,
   inviteWorkspaceMember,
@@ -98,7 +99,10 @@ export function DashboardWorkspace({
   return (
     <>
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-        <h2 className="text-xl font-bold">الألواح</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold">الألواح</h2>
+          <LanguageToggle />
+        </div>
         {boards.length === 0 ? (
           <p className="mt-3 leading-7 text-slate-300">
             {live

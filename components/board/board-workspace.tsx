@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, LayoutGrid, Table2 } from "lucide-react";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useLocale } from "@/components/locale-provider";
 import { KanbanBoard } from "@/components/board/kanban-board";
 import { TableView } from "@/components/board/table-view";
 import { TaskDrawer } from "@/components/board/task-drawer";
@@ -24,6 +26,7 @@ type BoardWorkspaceProps = {
 };
 
 export function BoardWorkspace({ initialBoard, live }: BoardWorkspaceProps) {
+  const { app } = useLocale();
   const [board, setBoard] = useState(initialBoard);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [calendar, setCalendar] = useState<CalendarMode>("both");
@@ -127,8 +130,8 @@ export function BoardWorkspace({ initialBoard, live }: BoardWorkspaceProps) {
             href="/dashboard"
             className="mb-2 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-white"
           >
-            <ArrowRight className="size-4" aria-hidden />
-            لوحة التحكم
+            <ArrowRight className="size-4 ltr:rotate-180" aria-hidden />
+            {app.dashboard}
           </Link>
           <h1 className="text-3xl font-extrabold">{board.title}</h1>
           {!live ? (
@@ -140,6 +143,7 @@ export function BoardWorkspace({ initialBoard, live }: BoardWorkspaceProps) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <LanguageToggle />
           <div className="flex rounded-full border border-white/10 bg-white/5 p-1 text-sm">
             <button
               type="button"

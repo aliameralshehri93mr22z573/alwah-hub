@@ -26,7 +26,7 @@ export function TableView({ board, calendar, onOpenTask }: TableViewProps) {
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10">
-      <table className="min-w-full text-right text-sm">
+      <table className="min-w-full text-start text-sm">
         <thead className="bg-white/5 text-slate-300">
           <tr>
             <th className="px-4 py-3 font-medium">المهمة</th>

@@ -1,9 +1,15 @@
 "use client";
 
 import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link2, Paperclip, X } from "lucide-react";
+import { Link2, MessageSquare, Paperclip, X } from "lucide-react";
+import {
+  AiTranslateToggle,
+  TranslatedText,
+} from "@/components/ai-translate-toggle";
 import { PriorityBadge } from "@/components/board/priority-badge";
 import { TaskDateLabel, type CalendarMode } from "@/components/board/task-card";
+import { useLocale } from "@/components/locale-provider";
+import { TASK_UI } from "@/lib/i18n";
 import {
   PRIORITY_LABELS,
   type BoardTask,
@@ -36,9 +42,12 @@ export function TaskDrawer({
   onClose,
   onSave,
 }: TaskDrawerProps) {
+  const { locale } = useLocale();
+  const ui = TASK_UI[locale];
   const [draft, setDraft] = useState<BoardTask | null>(task);
   const [linkName, setLinkName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [translateOn, setTranslateOn] = useState(false);
   const [sheetOffset, setSheetOffset] = useState(0);
   const dragStart = useRef<number | null>(null);
   const offsetRef = useRef(0);
@@ -122,7 +131,7 @@ export function TaskDrawer({
     <div className="fixed inset-0 z-50 flex flex-col md:flex-row">
       <button
         type="button"
-        aria-label="إغلاق"
+        aria-label={ui.close}
         className="order-1 min-h-16 flex-1 bg-black/50 md:order-2 md:h-full"
         onClick={onClose}
       />
@@ -138,16 +147,18 @@ export function TaskDrawer({
           onPointerCancel={onSheetPointerUp}
         >
           <span className="h-1.5 w-12 rounded-full bg-white/30" />
-          <span className="mt-2 text-xs text-slate-400">اسحب للأسفل للإغلاق</span>
+          <span className="mt-2 text-xs text-slate-400">{ui.dragToClose}</span>
         </div>
         <header className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm text-accent">تفاصيل المهمة</p>
-            <h2 className="mt-1 text-2xl font-extrabold">{draft.title}</h2>
+            <p className="text-sm text-accent">{ui.details}</p>
+            <h2 className="mt-1 text-2xl font-extrabold">
+              <TranslatedText text={draft.title} enabled={translateOn} />
+            </h2>
           </div>
           <button
             type="button"
-            aria-label="إغلاق التفاصيل"
+            aria-label={ui.closeDetails}
             onClick={onClose}
             className="rounded-full p-2 hover:bg-white/10"
           >
@@ -155,8 +166,15 @@ export function TaskDrawer({
           </button>
         </header>
 
+        <AiTranslateToggle
+          enabled={translateOn}
+          onToggle={setTranslateOn}
+          label={ui.translate}
+          hint={ui.translateHint}
+        />
+
         <label className="mb-4 block text-sm">
-          <span className="mb-1.5 block text-slate-300">العنوان</span>
+          <span className="mb-1.5 block text-slate-300">{ui.title}</span>
           <input
             value={draft.title}
             onChange={(event) => update({ title: event.target.value })}
@@ -165,17 +183,22 @@ export function TaskDrawer({
         </label>
 
         <label className="mb-4 block text-sm">
-          <span className="mb-1.5 block text-slate-300">الوصف</span>
+          <span className="mb-1.5 block text-slate-300">{ui.description}</span>
           <textarea
             value={draft.description ?? ""}
             onChange={(event) => update({ description: event.target.value })}
             rows={4}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 outline-none ring-brand focus:ring-2"
           />
+          {translateOn && draft.description ? (
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              <TranslatedText text={draft.description} enabled />
+            </p>
+          ) : null}
         </label>
 
         <label className="mb-4 block text-sm">
-          <span className="mb-1.5 block text-slate-300">الأولوية</span>
+          <span className="mb-1.5 block text-slate-300">{ui.priority}</span>
           <select
             value={draft.priority}
             onChange={(event) =>
@@ -195,7 +218,7 @@ export function TaskDrawer({
         </label>
 
         <label className="mb-4 block text-sm">
-          <span className="mb-1.5 block text-slate-300">تاريخ الاستحقاق</span>
+          <span className="mb-1.5 block text-slate-300">{ui.due}</span>
           <input
             type="date"
             value={draft.due_date ?? ""}
@@ -211,7 +234,7 @@ export function TaskDrawer({
 
         {fields.length > 0 ? (
           <section className="mb-6 space-y-3">
-            <h3 className="font-bold">الحقول المخصصة</h3>
+            <h3 className="font-bold">{ui.fields}</h3>
             {fields.map((field) => {
               const value = fieldValue(draft, field.key);
               return (
@@ -267,7 +290,7 @@ export function TaskDrawer({
         <section className="mb-6">
           <h3 className="mb-3 flex items-center gap-2 font-bold">
             <Paperclip className="size-4" aria-hidden />
-            المرفقات
+            {ui.attachments}
           </h3>
           <ul className="space-y-2">
             {attachments.map((item) => (
@@ -281,14 +304,14 @@ export function TaskDrawer({
                   rel="noreferrer"
                   className="truncate text-accent hover:underline"
                 >
-                  {item.name}
+                  <TranslatedText text={item.name} enabled={translateOn} />
                 </a>
                 <button
                   type="button"
                   onClick={() => removeAttachment(item.id)}
                   className="text-slate-400 hover:text-white"
                 >
-                  حذف
+                  {ui.delete}
                 </button>
               </li>
             ))}
@@ -297,7 +320,7 @@ export function TaskDrawer({
             <input
               value={linkName}
               onChange={(event) => setLinkName(event.target.value)}
-              placeholder="اسم المرفق"
+              placeholder={ui.attachmentName}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
             />
             <div className="flex gap-2">
@@ -313,10 +336,34 @@ export function TaskDrawer({
                 className="inline-flex items-center gap-1 rounded-xl bg-brand px-3 py-2 text-sm"
               >
                 <Link2 className="size-4" />
-                إضافة
+                {ui.add}
               </button>
             </div>
           </form>
+        </section>
+
+        <section className="mb-6">
+          <h3 className="mb-2 flex items-center gap-2 font-bold">
+            <MessageSquare className="size-4" aria-hidden />
+            {ui.comments}
+          </h3>
+          <p className="mb-3 text-xs leading-6 text-slate-400">{ui.commentsHint}</p>
+          <ul className="space-y-2">
+            {[
+              { id: "c1", author: ui.commentAuthor1, body: ui.comment1 },
+              { id: "c2", author: ui.commentAuthor2, body: ui.comment2 },
+            ].map((comment) => (
+              <li
+                key={comment.id}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+              >
+                <p className="text-xs font-semibold text-accent">{comment.author}</p>
+                <p className="mt-1 text-sm leading-6 text-slate-200">
+                  <TranslatedText text={comment.body} enabled={translateOn} />
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <button
@@ -324,7 +371,7 @@ export function TaskDrawer({
           onClick={() => onSave(draft)}
           className="mt-auto rounded-full bg-brand py-3 font-semibold"
         >
-          حفظ التغييرات
+          {ui.save}
         </button>
       </aside>
     </div>

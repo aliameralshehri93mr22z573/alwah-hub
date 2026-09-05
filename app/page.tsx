@@ -16,6 +16,7 @@ import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { TemplateShowcase } from "@/components/landing/template-showcase";
 import { effectivePlan } from "@/lib/demo-session";
+import { getLandingCopy } from "@/lib/i18n-server";
 import { type PlanTier } from "@/lib/plans";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 import { createClient } from "@/utils/supabase/server";
@@ -40,6 +41,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
+  const { copy } = await getLandingCopy();
   let current: PlanTier = "free";
   let signedIn = !isSupabaseConfigured();
 
@@ -79,45 +81,42 @@ export default async function Home() {
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-accent">
               <Sparkles className="size-4" aria-hidden />
-              عربي أصيل · مدى · Apple Pay
+              {copy.heroBadge}
             </p>
             <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-[3.25rem]">
-              مركزك الذكي لإدارة المهام والمشاريع بسلاسة عربية
+              {copy.heroTitle}
             </h1>
             <p className="mt-5 max-w-xl text-base leading-8 text-slate-300 sm:text-lg">
-              أدوات مثل Monday وClickUp قوية، لكنها معقّدة وأسعارها مرتفعة
-              وواجهتها ليست عربية من الأساس. ألواح هب تمنحك كانبان سريعاً من
-              اليمين لليسار، قوالب جاهزة، ودفعاً محلياً بمدى وApple Pay — دون
-              أن تضيع أسبوعاً في إعداد الأداة.
+              {copy.heroBody}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href="/register"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-white transition hover:bg-brand/90"
               >
-                ابدأ مجاناً
-                <ArrowLeft className="size-4" aria-hidden />
+                {copy.heroCta}
+                <ArrowLeft className="size-4 ltr:rotate-180" aria-hidden />
               </Link>
               <Link
                 href="/dashboard/boards/demo"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/15 px-6 text-base text-slate-100 transition hover:bg-white/10"
               >
                 <Play className="size-4 text-accent" aria-hidden />
-                مشاهدة عرض تجريبي
+                {copy.heroDemo}
               </Link>
             </div>
             <ul className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
               <li className="flex items-center gap-2">
                 <Languages className="size-4 shrink-0 text-accent" />
-                عربي بالكامل
+                {copy.badgeArabic}
               </li>
               <li className="flex items-center gap-2">
                 <CreditCard className="size-4 shrink-0 text-accent" />
-                مدى و Apple Pay
+                {copy.badgePay}
               </li>
               <li className="flex items-center gap-2">
                 <Zap className="size-4 shrink-0 text-accent" />
-                تبدأ خلال دقائق
+                {copy.badgeFast}
               </li>
             </ul>
           </div>
@@ -128,23 +127,23 @@ export default async function Home() {
           <div className="grid gap-4 sm:grid-cols-3">
             <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <Zap className="size-5 text-accent" />
-              <h2 className="mt-3 font-bold">أسرع من إعداد الأدوات العالمية</h2>
+              <h2 className="mt-3 font-bold">{copy.cardSpeedTitle}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-300">
-                مساحة و قالب ولوحة من أول تسجيل — بلا قوائم إنجليزية متداخلة.
+                {copy.cardSpeedBody}
               </p>
             </article>
             <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <CreditCard className="size-5 text-accent" />
-              <h2 className="mt-3 font-bold">أسعار أوضح بالريال</h2>
+              <h2 className="mt-3 font-bold">{copy.cardPriceTitle}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-300">
-                من مجاني حتى 349 ر.س للمنشآت، بدون مفاجآت مقاعد مخفية.
+                {copy.cardPriceBody}
               </p>
             </article>
             <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <Smartphone className="size-5 text-accent" />
-              <h2 className="mt-3 font-bold">مصمَّم للجوال أولاً</h2>
+              <h2 className="mt-3 font-bold">{copy.cardMobileTitle}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-300">
-                ألواح تُمرّر أفقياً ومهام تُفتح من الأسفل كما يتوقع المستخدم.
+                {copy.cardMobileBody}
               </p>
             </article>
           </div>
@@ -154,13 +153,14 @@ export default async function Home() {
           id="templates"
           className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 pb-16 sm:px-6"
         >
-          <p className="text-sm font-semibold text-accent">القوالب الجاهزة</p>
+          <p className="text-sm font-semibold text-accent">
+            {copy.templatesKicker}
+          </p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">
-            أربعة مسارات عربية تبدأ من أول نقرة
+            {copy.templatesTitle}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-            اختر قالباً لترى أعمدته ومهمة نموذجية، ثم افتح العرض التجريبي وجرّب
-            السحب والإفلات بنفسك.
+            {copy.templatesBody}
           </p>
           <div className="mt-8">
             <TemplateShowcase />
@@ -171,13 +171,12 @@ export default async function Home() {
           id="pricing"
           className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 pb-16 sm:px-6"
         >
-          <p className="text-sm font-semibold text-accent">الأسعار</p>
+          <p className="text-sm font-semibold text-accent">{copy.pricingKicker}</p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">
-            باقات واضحة… وترقية فورية
+            {copy.pricingTitle}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-            المجانية للتجربة، ثم الأفراد 39 ر.س، الفرق 149 ر.س، والمنشآت 349 ر.س
-            شهرياً. زر الترقية ينقلك مباشرة لإتمام الدفع.
+            {copy.pricingBody}
           </p>
           <div className="mt-8">
             <LandingPricing current={current} signedIn={signedIn} />
@@ -188,9 +187,9 @@ export default async function Home() {
           id="faq"
           className="mx-auto w-full max-w-3xl scroll-mt-24 px-4 pb-20 sm:px-6"
         >
-          <p className="text-sm font-semibold text-accent">الأسئلة الشائعة</p>
+          <p className="text-sm font-semibold text-accent">{copy.faqKicker}</p>
           <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">
-            إجابات سريعة قبل أن تبدأ
+            {copy.faqTitle}
           </h2>
           <div className="mt-8">
             <FaqAccordion />
