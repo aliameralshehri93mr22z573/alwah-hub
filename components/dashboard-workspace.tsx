@@ -30,12 +30,14 @@ export function DashboardWorkspace({
   plan,
   usage,
   live,
+  canInvite = true,
 }: {
   workspaceId: string | null;
   boards: DashboardBoardCard[];
   plan: PlanTier;
   usage: { boards: number; members: number; activeTasks: number } | null;
   live: boolean;
+  canInvite?: boolean;
 }) {
   const router = useRouter();
   const [modal, setModal] = useState<UpgradeReason | null>(null);
@@ -172,42 +174,48 @@ export function DashboardWorkspace({
         <h2 className="text-xl font-bold">دعوة عضو</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
           {definition.limits.maxMembers === null
-            ? "باقتك الحالية بلا حد عملي على عدد الأعضاء."
-            : `باقة ${definition.name} حتى ${definition.limits.maxMembers} أعضاء.`}{" "}
+            ? "باقة مساحة العمل بلا حد عملي على عدد الأعضاء."
+            : `باقة مساحة العمل (${definition.name}) حتى ${definition.limits.maxMembers} أعضاء.`}{" "}
           الأعضاء الحاليون: {usage?.members ?? 1}
           {definition.limits.maxMembers !== null
             ? ` من ${definition.limits.maxMembers}.`
             : "."}
         </p>
-        <form action={onInvite} className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <input type="hidden" name="workspaceId" value={workspaceId ?? ""} />
-          <input
-            type="email"
-            name="email"
-            required={live}
-            placeholder="بريد العضو"
-            className="min-h-11 flex-1 rounded-full border border-white/10 bg-white/5 px-4 text-sm outline-none ring-brand focus:ring-2"
-          />
-          {live ? (
-            <button
-              type="submit"
-              disabled={pending === "invite"}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              <UserPlus className="size-4" />
-              دعوة
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setModal("members")}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              <UserPlus className="size-4" />
-              دعوة
-            </button>
-          )}
-        </form>
+        {canInvite ? (
+          <form action={onInvite} className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <input type="hidden" name="workspaceId" value={workspaceId ?? ""} />
+            <input
+              type="email"
+              name="email"
+              required={live}
+              placeholder="بريد العضو"
+              className="min-h-11 flex-1 rounded-full border border-white/10 bg-white/5 px-4 text-sm outline-none ring-brand focus:ring-2"
+            />
+            {live ? (
+              <button
+                type="submit"
+                disabled={pending === "invite"}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                <UserPlus className="size-4" />
+                دعوة
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setModal("members")}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                <UserPlus className="size-4" />
+                دعوة
+              </button>
+            )}
+          </form>
+        ) : (
+          <p className="mt-4 text-sm text-slate-400">
+            دعوة الأعضاء وترقية الباقة متاحتان لمالك المساحة فقط.
+          </p>
+        )}
         {inviteError ? (
           <p className="mt-2 text-sm text-red-300">{inviteError}</p>
         ) : null}

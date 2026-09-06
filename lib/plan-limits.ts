@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { effectivePlan } from "@/lib/demo-session";
-import { planOf, type PlanTier } from "@/lib/plans";
+import { planOf, storedPlanTier, type PlanTier } from "@/lib/plans";
 
 export type PlanLimitReason = "boards" | "members" | "tasks" | "generic";
 
@@ -31,7 +31,7 @@ type WorkspaceUsage = {
   activeTasks: number;
 };
 
-async function ownerPlan(
+export async function workspaceOwnerPlan(
   supabase: SupabaseClient,
   ownerId: string,
 ): Promise<PlanTier> {
@@ -40,10 +40,7 @@ async function ownerPlan(
     .select("plan")
     .eq("id", ownerId)
     .maybeSingle();
-  const plan = data?.plan;
-  return effectivePlan(
-    plan === "solo" || plan === "team" || plan === "agency" ? plan : "free",
-  );
+  return effectivePlan(storedPlanTier(data?.plan));
 }
 
 export async function workspaceUsage(
@@ -71,7 +68,7 @@ export async function workspaceUsage(
         .select("user_id", { count: "exact", head: true })
         .eq("workspace_id", workspaceId),
       supabase.from("boards").select("id").eq("workspace_id", workspaceId),
-      ownerPlan(supabase, workspace.owner_id as string),
+      workspaceOwnerPlan(supabase, workspace.owner_id as string),
     ]);
 
   const boardIds = (boardsRows ?? []).map((row) => row.id as string);

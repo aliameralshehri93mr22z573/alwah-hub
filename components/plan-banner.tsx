@@ -2,9 +2,16 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { planOf, type PlanTier } from "@/lib/plans";
 
-export function PlanBanner({ plan }: { plan: PlanTier }) {
+export function PlanBanner({
+  plan,
+  canManagePlan = true,
+}: {
+  plan: PlanTier;
+  canManagePlan?: boolean;
+}) {
   const definition = planOf(plan);
   const isFree = plan === "free";
+  const label = canManagePlan ? "باقتك الحالية" : "باقة مساحة العمل";
 
   return (
     <div
@@ -18,27 +25,33 @@ export function PlanBanner({ plan }: { plan: PlanTier }) {
         <p className="flex items-start gap-2 text-sm leading-6 sm:items-center">
           <Sparkles className="mt-0.5 size-4 shrink-0 text-accent sm:mt-0" />
           <span>
-            باقتك الحالية: <strong>{definition.name}</strong>
-            {isFree
+            {label}: <strong>{definition.name}</strong>
+            {isFree && canManagePlan
               ? " — حتى لوحتين و3 أعضاء. رقِّ الحساب لإزالة الحدود."
-              : " — شكراً لدعمك ألواح هب."}
+              : isFree
+                ? " — حتى لوحتين و3 أعضاء."
+                : canManagePlan
+                  ? " — شكراً لدعمك ألواح هب."
+                  : "."}
           </span>
         </p>
-        {isFree ? (
-          <Link
-            href="/pricing"
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
-          >
-            ترقية الحساب
-          </Link>
-        ) : (
-          <Link
-            href="/pricing"
-            className="inline-flex shrink-0 text-sm text-accent hover:underline"
-          >
-            إدارة الباقة
-          </Link>
-        )}
+        {canManagePlan ? (
+          isFree ? (
+            <Link
+              href="/pricing"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
+            >
+              ترقية الحساب
+            </Link>
+          ) : (
+            <Link
+              href="/pricing"
+              className="inline-flex shrink-0 text-sm text-accent hover:underline"
+            >
+              إدارة الباقة
+            </Link>
+          )
+        ) : null}
       </div>
     </div>
   );

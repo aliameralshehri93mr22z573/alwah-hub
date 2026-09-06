@@ -10,6 +10,11 @@ import {
   readDemoBoards,
 } from "@/lib/demo-session";
 import { isTemplateType, type TemplateType } from "@/lib/templates";
+import {
+  canInviteWorkspaceMembers,
+  isWorkspaceOwner,
+  resolveCurrentWorkspace,
+} from "@/lib/workspace";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
@@ -37,6 +42,8 @@ export default async function DashboardPage() {
           activeTasks: 0,
         }}
         live={false}
+        canManagePlan
+        canInvite
       />
     );
   }
@@ -54,13 +61,7 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id, name")
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const workspace = await resolveCurrentWorkspace(supabase, user.id);
 
   let boards: DashboardBoard[] = [];
   let plan: PlanTier = "free";
@@ -68,24 +69,16 @@ export default async function DashboardPage() {
     null;
 
   if (workspace?.id) {
-    const [{ data: boardRows }, profile, stats] = await Promise.all([
+    const [{ data: boardRows }, stats] = await Promise.all([
       supabase
         .from("boards")
         .select("id, title, template_type, columns(title, position)")
         .eq("workspace_id", workspace.id)
         .order("created_at", { ascending: true }),
-      supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle(),
       workspaceUsage(supabase, workspace.id),
     ]);
 
-    const profilePlan = profile.data?.plan;
-    plan = await effectivePlan(
-      profilePlan === "solo" ||
-        profilePlan === "team" ||
-        profilePlan === "agency"
-        ? profilePlan
-        : "free",
-    );
+    plan = stats?.plan ?? (await effectivePlan("free"));
     usage = stats
       ? {
           boards: stats.boards,
@@ -120,6 +113,8 @@ export default async function DashboardPage() {
       plan={plan}
       usage={usage}
       live
+      canManagePlan={isWorkspaceOwner(workspace, user.id)}
+      canInvite={canInviteWorkspaceMembers(workspace)}
     />
   );
 }
@@ -132,6 +127,8 @@ function DashboardFrame({
   plan,
   usage,
   live,
+  canManagePlan,
+  canInvite,
 }: {
   email: string | null;
   workspaceId: string | null;
@@ -140,10 +137,12 @@ function DashboardFrame({
   plan: PlanTier;
   usage: { boards: number; members: number; activeTasks: number } | null;
   live: boolean;
+  canManagePlan: boolean;
+  canInvite: boolean;
 }) {
   return (
     <div className="flex min-h-full flex-col">
-      <PlanBanner plan={plan} />
+      <PlanBanner plan={plan} canManagePlan={canManagePlan} />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
         <header className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -176,6 +175,7 @@ function DashboardFrame({
           plan={plan}
           usage={usage}
           live={live}
+          canInvite={canInvite}
         />
       </main>
     </div>

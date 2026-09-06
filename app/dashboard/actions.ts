@@ -5,6 +5,7 @@ import {
   assertCanCreateBoard,
   PlanLimitError,
 } from "@/lib/plan-limits";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
@@ -54,13 +55,7 @@ export async function createWorkspaceBoard(): Promise<PlanActionResult> {
     return { ok: false, reason: "generic", message: "يلزم تسجيل الدخول." };
   }
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id")
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const workspace = await resolveCurrentWorkspace(supabase, user.id);
 
   if (!workspace) {
     return { ok: false, reason: "generic", message: "أكمل التهيئة أولاً." };

@@ -106,6 +106,12 @@ export function isPlanTier(value: string): value is PlanTier {
   return PLAN_TIERS.includes(value as PlanTier);
 }
 
+export function storedPlanTier(value: unknown): PlanTier {
+  return value === "solo" || value === "team" || value === "agency"
+    ? value
+    : "free";
+}
+
 export function planOf(tier: string | null | undefined): PlanDefinition {
   return isPlanTier(tier ?? "") ? PLANS[tier as PlanTier] : PLANS.free;
 }
