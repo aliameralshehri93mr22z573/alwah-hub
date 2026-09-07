@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, LayoutGrid, Table2 } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useLocale } from "@/components/locale-provider";
@@ -9,7 +10,11 @@ import { KanbanBoard } from "@/components/board/kanban-board";
 import { TableView } from "@/components/board/table-view";
 import { TaskDrawer } from "@/components/board/task-drawer";
 import type { CalendarMode } from "@/components/board/task-card";
-import { useBoardRealtime } from "@/hooks/use-board-realtime";
+import {
+  applyRealtimeChange,
+  useBoardRealtime,
+  type BoardRealtimePayload,
+} from "@/hooks/use-board-realtime";
 import { findTask, orderedIdsByColumn, upsertTask } from "@/lib/board-move";
 import { buildCustomFields, BOARD_TEMPLATES } from "@/lib/templates";
 import {
@@ -30,6 +35,7 @@ export function BoardWorkspace({
   live = true,
 }: BoardWorkspaceProps) {
   const { app } = useLocale();
+  const router = useRouter();
   const [board, setBoard] = useState(initialBoard);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [calendar, setCalendar] = useState<CalendarMode>("both");
@@ -46,13 +52,16 @@ export function BoardWorkspace({
     }
   }, [board.id, live]);
 
-  useBoardRealtime(
-    board.id,
-    () => {
+  const handleRealtime = useCallback(
+    (payload: BoardRealtimePayload) => {
+      setBoard((current) => applyRealtimeChange(current, payload));
+      router.refresh();
       void reload();
     },
-    live,
+    [reload, router],
   );
+
+  useBoardRealtime(board.id, handleRealtime, live);
 
   const selected = selectedId ? findTask(board, selectedId)?.task ?? null : null;
 

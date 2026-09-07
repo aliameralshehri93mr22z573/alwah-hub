@@ -1,5 +1,6 @@
 "use server";
 
+import { connection } from "next/server";
 import { asCustomFields } from "@/lib/custom-fields";
 import { isTemplateType } from "@/lib/templates";
 import { assertCanCreateTask } from "@/lib/plan-limits";
@@ -131,6 +132,7 @@ export async function persistNewTask(input: {
 }
 
 export async function fetchBoardSnapshot(boardId: string) {
+  await connection();
   const supabase = await requireClient();
   const { data: board, error: boardError } = await supabase
     .from("boards")
