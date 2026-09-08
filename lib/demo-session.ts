@@ -33,7 +33,12 @@ export async function readDemoPlan(): Promise<Exclude<PlanTier, "free"> | null> 
 export async function effectivePlan(
   stored: string | null | undefined,
 ): Promise<PlanTier> {
-  if (stored === "solo" || stored === "team" || stored === "agency") {
+  if (
+    stored === "solo" ||
+    stored === "team" ||
+    stored === "agency" ||
+    stored === "pro"
+  ) {
     return stored;
   }
   if (!isMoyasarConfigured()) {

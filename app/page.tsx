@@ -17,6 +17,8 @@ import { SiteHeader } from "@/components/landing/site-header";
 import { TemplateShowcase } from "@/components/landing/template-showcase";
 import { effectivePlan } from "@/lib/demo-session";
 import { getLandingCopy } from "@/lib/i18n-server";
+import { workspaceUsage } from "@/lib/plan-limits";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { type PlanTier } from "@/lib/plans";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 import { createClient } from "@/utils/supabase/server";
@@ -52,12 +54,18 @@ export default async function Home() {
     } = await supabase.auth.getUser();
     signedIn = Boolean(user);
     if (user) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("plan")
-        .eq("id", user.id)
-        .maybeSingle();
-      current = await effectivePlan(data?.plan);
+      const workspace = await resolveCurrentWorkspace(supabase, user.id);
+      if (workspace) {
+        const usage = await workspaceUsage(supabase, workspace.id);
+        current = usage?.plan ?? "free";
+      } else {
+        const { data } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", user.id)
+          .maybeSingle();
+        current = await effectivePlan(data?.plan);
+      }
     }
   } else {
     current = await effectivePlan(null);

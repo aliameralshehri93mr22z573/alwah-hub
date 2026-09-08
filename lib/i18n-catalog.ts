@@ -130,6 +130,16 @@ export const PLAN_I18N: Record<
         "مدى و Apple Pay للمنشأة",
       ],
     },
+    pro: {
+      name: "المحترفين",
+      tagline: "تفعيل سنوي عبر كود الخصم للمدارس والجهات.",
+      features: [
+        "لوحات وأعضاء بلا حد عملي",
+        "مهام غير محدودة",
+        "تقارير المساحة",
+        "تفعيل لمدة سنة عبر كود الخصم",
+      ],
+    },
   },
   en: {
     free: {
@@ -170,6 +180,16 @@ export const PLAN_I18N: Record<
         "Advanced reports",
         "Priority support",
         "Mada and Apple Pay for the org",
+      ],
+    },
+    pro: {
+      name: "Pro",
+      tagline: "A one-year grant via promo code for schools and partners.",
+      features: [
+        "Boards and members with no practical cap",
+        "Unlimited tasks",
+        "Workspace reports",
+        "One-year activation via promo code",
       ],
     },
   },

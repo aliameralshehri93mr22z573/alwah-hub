@@ -1,4 +1,4 @@
-import { isPlanTier, planOf, type PlanTier } from "@/lib/plans";
+import { planOf, type PaidCheckoutPlan } from "@/lib/plans";
 import { paymentProvider } from "@/lib/billing";
 import { siteUrl } from "@/lib/site";
 
@@ -33,15 +33,15 @@ export async function resolveCheckoutPlan(request: Request) {
 
 export function paidPlanFrom(
   value: string | null | undefined,
-): Exclude<PlanTier, "free"> | null {
-  if (!value || !isPlanTier(value) || value === "free") {
-    return null;
+): PaidCheckoutPlan | null {
+  if (value === "solo" || value === "team" || value === "agency") {
+    return value;
   }
-  return value;
+  return null;
 }
 
 export async function createCheckoutUrl(
-  planId: Exclude<PlanTier, "free">,
+  planId: PaidCheckoutPlan,
   userId: string,
 ): Promise<CheckoutResult> {
   const plan = planOf(planId);

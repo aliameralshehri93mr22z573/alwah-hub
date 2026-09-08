@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Sparkles, X } from "lucide-react";
+import { PromoCodeForm } from "@/components/promo-code-form";
 
 const COPY = {
   boards: {
@@ -62,6 +63,9 @@ export function UpgradeModal({
           {copy.title}
         </h2>
         <p className="mt-2 leading-7 text-slate-300">{copy.body}</p>
+        <div className="mt-5">
+          <PromoCodeForm />
+        </div>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <Link
             href="/pricing"

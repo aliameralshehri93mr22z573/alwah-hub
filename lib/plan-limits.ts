@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { effectivePlan } from "@/lib/demo-session";
-import { planOf, storedPlanTier, type PlanTier } from "@/lib/plans";
+import {
+  grantedWorkspacePlan,
+  planOf,
+  storedPlanTier,
+  type PlanTier,
+} from "@/lib/plans";
 
 export type PlanLimitReason = "boards" | "members" | "tasks" | "generic";
 
@@ -49,7 +54,7 @@ export async function workspaceUsage(
 ): Promise<WorkspaceUsage | null> {
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("id, owner_id")
+    .select("id, owner_id, plan, plan_expires_at")
     .eq("id", workspaceId)
     .maybeSingle();
 
@@ -57,7 +62,7 @@ export async function workspaceUsage(
     return null;
   }
 
-  const [{ count: boards }, { count: members }, { data: boardsRows }, plan] =
+  const [{ count: boards }, { count: members }, { data: boardsRows }, ownerPlan] =
     await Promise.all([
       supabase
         .from("boards")
@@ -73,10 +78,14 @@ export async function workspaceUsage(
 
   const boardIds = (boardsRows ?? []).map((row) => row.id as string);
   const activeTasks = await countActiveTasks(supabase, boardIds);
+  const promoPlan = grantedWorkspacePlan(
+    workspace.plan,
+    workspace.plan_expires_at as string | null,
+  );
 
   return {
     workspaceId,
-    plan,
+    plan: promoPlan ?? ownerPlan,
     boards: boards ?? 0,
     members: members ?? 0,
     activeTasks,

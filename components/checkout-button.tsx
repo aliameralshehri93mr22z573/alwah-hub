@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useLocale } from "@/components/locale-provider";
 import { MARKETING_UI } from "@/lib/i18n-catalog";
 import type { Locale } from "@/lib/i18n";
-import { PLANS, type PlanTier } from "@/lib/plans";
+import { PLANS, type PaidCheckoutPlan, type PlanTier } from "@/lib/plans";
 
-function checkoutHref(plan: Exclude<PlanTier, "free">) {
+function checkoutHref(plan: PaidCheckoutPlan) {
   return `/checkout?plan=${plan}`;
 }
 
@@ -15,7 +15,7 @@ export function CheckoutButton({
   current,
   signedIn,
 }: {
-  plan: Exclude<PlanTier, "free">;
+  plan: PaidCheckoutPlan;
   current: PlanTier;
   signedIn: boolean;
 }) {

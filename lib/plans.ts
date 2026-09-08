@@ -1,6 +1,8 @@
-export const PLAN_TIERS = ["free", "solo", "team", "agency"] as const;
+export const PLAN_TIERS = ["free", "solo", "team", "agency", "pro"] as const;
 
 export type PlanTier = (typeof PLAN_TIERS)[number];
+
+export type PaidCheckoutPlan = "solo" | "team" | "agency";
 
 export type PlanLimits = {
   maxBoards: number | null;
@@ -98,6 +100,25 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       reports: true,
     },
   },
+  pro: {
+    id: "pro",
+    name: "المحترفين",
+    tagline: "تفعيل سنوي عبر كود الخصم للمدارس والجهات.",
+    monthlySar: 0,
+    amountHalalas: 0,
+    features: [
+      "لوحات وأعضاء بلا حد عملي",
+      "مهام غير محدودة",
+      "تقارير المساحة",
+      "تفعيل لمدة سنة عبر كود الخصم",
+    ],
+    limits: {
+      maxBoards: null,
+      maxMembers: null,
+      maxActiveTasks: null,
+      reports: true,
+    },
+  },
 };
 
 export const PAID_PLANS = [PLANS.solo, PLANS.team, PLANS.agency] as const;
@@ -107,9 +128,31 @@ export function isPlanTier(value: string): value is PlanTier {
 }
 
 export function storedPlanTier(value: unknown): PlanTier {
-  return value === "solo" || value === "team" || value === "agency"
+  return value === "solo" ||
+    value === "team" ||
+    value === "agency" ||
+    value === "pro"
     ? value
     : "free";
+}
+
+export function isPromoGrantActive(expiresAt: string | null | undefined) {
+  if (!expiresAt) {
+    return false;
+  }
+  const expires = Date.parse(expiresAt);
+  return Number.isFinite(expires) && expires > Date.now();
+}
+
+export function grantedWorkspacePlan(
+  workspacePlan: unknown,
+  expiresAt: string | null | undefined,
+): PlanTier | null {
+  if (!isPromoGrantActive(expiresAt)) {
+    return null;
+  }
+  const granted = storedPlanTier(workspacePlan);
+  return granted === "free" ? "pro" : granted;
 }
 
 export function planOf(tier: string | null | undefined): PlanDefinition {

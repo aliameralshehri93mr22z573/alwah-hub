@@ -12,7 +12,7 @@ create extension if not exists pgcrypto;
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'plan_tier') then
-    create type public.plan_tier as enum ('free', 'solo', 'team', 'agency');
+    create type public.plan_tier as enum ('free', 'solo', 'team', 'agency', 'pro');
   end if;
 
   if not exists (select 1 from pg_type where typname = 'template_type') then
@@ -29,9 +29,7 @@ begin
 end
 $$;
 
---------------------------------------------------------------------------------
--- Tables
---------------------------------------------------------------------------------
+alter type public.plan_tier add value if not exists 'pro';
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -52,8 +50,16 @@ create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   owner_id uuid not null references public.profiles (id) on delete cascade,
+  plan public.plan_tier,
+  plan_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.workspaces
+  add column if not exists plan public.plan_tier;
+
+alter table public.workspaces
+  add column if not exists plan_expires_at timestamptz;
 
 -- Required for team/agency isolation (not a public UI table).
 create table if not exists public.workspace_members (
@@ -99,6 +105,35 @@ alter table public.workspace_members
 
 alter table public.tasks
   add column if not exists assigned_to uuid references public.profiles (id) on delete set null;
+
+create table if not exists public.promo_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null,
+  plan_granted text not null default 'pro',
+  duration_days integer not null default 365,
+  max_uses integer,
+  times_used integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.promo_codes
+  add column if not exists plan_granted text not null default 'pro';
+
+alter table public.promo_codes
+  add column if not exists duration_days integer not null default 365;
+
+alter table public.promo_codes
+  add column if not exists max_uses integer;
+
+alter table public.promo_codes
+  add column if not exists times_used integer not null default 0;
+
+alter table public.promo_codes
+  add column if not exists active boolean not null default true;
+
+create unique index if not exists promo_codes_code_unique_idx
+  on public.promo_codes (upper(btrim(code)));
 
 --------------------------------------------------------------------------------
 -- Indexes
@@ -514,9 +549,14 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if tg_op = 'UPDATE' and new.plan is distinct from old.plan
-     and coalesce(auth.jwt() ->> 'role', current_user)
-       not in ('service_role', 'postgres', 'supabase_admin') then
+  if tg_op = 'UPDATE' and new.plan is distinct from old.plan then
+    if current_user in ('postgres', 'supabase_admin') then
+      return new;
+    end if;
+    if coalesce(auth.jwt() ->> 'role', current_user)
+         in ('service_role', 'postgres', 'supabase_admin') then
+      return new;
+    end if;
     raise exception 'تحديث الباقة يتم عبر بوابة الدفع فقط';
   end if;
   return new;
@@ -756,3 +796,96 @@ $$;
 
 revoke all on function public.lookup_profile_id_by_email(text) from public;
 grant execute on function public.lookup_profile_id_by_email(text) to authenticated, service_role;
+
+--------------------------------------------------------------------------------
+-- Promo codes: school / yearly grants
+--------------------------------------------------------------------------------
+
+alter table public.promo_codes enable row level security;
+
+drop policy if exists "promo_codes_no_direct_access" on public.promo_codes;
+
+revoke all on public.promo_codes from public, anon, authenticated;
+grant select, insert, update, delete on public.promo_codes to service_role;
+
+create or replace function public.apply_promo_code(p_code text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_workspace uuid;
+  v_owner uuid;
+  v_promo_id uuid;
+  v_granted text;
+  v_days integer;
+  v_used integer;
+  v_max integer;
+  v_active boolean;
+  v_expires timestamptz;
+  v_plan public.plan_tier;
+  v_code text := upper(btrim(coalesce(p_code, '')));
+begin
+  if v_user is null then
+    return json_build_object('ok', false, 'message', 'يلزم تسجيل الدخول.');
+  end if;
+
+  if v_code = '' then
+    return json_build_object('ok', false, 'message', 'أدخل كود الخصم.');
+  end if;
+
+  select w.id, w.owner_id
+    into v_workspace, v_owner
+  from public.workspaces w
+  where w.owner_id = v_user
+  order by w.created_at asc
+  limit 1;
+
+  if v_workspace is null then
+    return json_build_object('ok', false, 'message', 'أكمل تهيئة مساحة العمل أولاً.');
+  end if;
+
+  select p.id, p.plan_granted, p.duration_days, p.times_used, p.max_uses, p.active
+    into v_promo_id, v_granted, v_days, v_used, v_max, v_active
+  from public.promo_codes p
+  where upper(btrim(p.code)) = v_code
+  for update;
+
+  if v_promo_id is null or v_active is not true then
+    return json_build_object('ok', false, 'message', 'كود الخصم غير صحيح أو منتهٍ.');
+  end if;
+
+  if v_max is not null and coalesce(v_used, 0) >= v_max then
+    return json_build_object('ok', false, 'message', 'تم استهلاك هذا الكود بالكامل.');
+  end if;
+
+  v_plan := case
+    when v_granted in ('solo', 'team', 'agency', 'pro') then v_granted::public.plan_tier
+    else 'pro'::public.plan_tier
+  end;
+  v_expires := now() + make_interval(days => coalesce(v_days, 365));
+
+  update public.workspaces
+  set plan = v_plan,
+      plan_expires_at = v_expires
+  where id = v_workspace;
+
+  update public.profiles
+  set plan = v_plan
+  where id = v_owner;
+
+  update public.promo_codes
+  set times_used = coalesce(times_used, 0) + 1
+  where id = v_promo_id;
+
+  return json_build_object(
+    'ok', true,
+    'message', 'تم تفعيل اشتراك باقة المحترفين لمدة سنة بنجاح!'
+  );
+end;
+$$;
+
+revoke all on function public.apply_promo_code(text) from public;
+grant execute on function public.apply_promo_code(text) to authenticated, service_role;

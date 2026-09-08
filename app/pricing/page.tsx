@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { Kanban, Shield, Smartphone } from "lucide-react";
+import { PromoCodeForm } from "@/components/promo-code-form";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { PLAN_I18N } from "@/lib/i18n-catalog";
 import { getLandingCopy } from "@/lib/i18n-server";
+import { workspaceUsage } from "@/lib/plan-limits";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { type PlanTier } from "@/lib/plans";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
@@ -25,15 +28,18 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
     } = await supabase.auth.getUser();
     signedIn = Boolean(user);
     if (user) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("plan")
-        .eq("id", user.id)
-        .maybeSingle();
-      const plan = data?.plan;
-      current = await effectivePlan(
-        plan === "solo" || plan === "team" || plan === "agency" ? plan : "free",
-      );
+      const workspace = await resolveCurrentWorkspace(supabase, user.id);
+      if (workspace) {
+        const usage = await workspaceUsage(supabase, workspace.id);
+        current = usage?.plan ?? "free";
+      } else {
+        const { data } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", user.id)
+          .maybeSingle();
+        current = await effectivePlan(data?.plan);
+      }
     }
   } else {
     current = await effectivePlan(null);
@@ -78,6 +84,12 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       ) : null}
 
       <LandingPricing current={current} signedIn={signedIn} />
+
+      {signedIn ? (
+        <section className="mt-8 max-w-xl">
+          <PromoCodeForm />
+        </section>
+      ) : null}
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2">
         <article className="rounded-2xl border border-white/10 bg-white/5 p-5">

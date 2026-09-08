@@ -5,9 +5,9 @@ import { Check } from "lucide-react";
 import { CheckoutButton, priceLabel } from "@/components/checkout-button";
 import { useLocale } from "@/components/locale-provider";
 import { MARKETING_UI, PLAN_I18N } from "@/lib/i18n-catalog";
-import { PLANS, type PlanTier } from "@/lib/plans";
+import { PLANS, type PaidCheckoutPlan, type PlanTier } from "@/lib/plans";
 
-const ORDER: PlanTier[] = ["free", "solo", "team", "agency"];
+const ORDER: Array<"free" | PaidCheckoutPlan> = ["free", "solo", "team", "agency"];
 
 export function LandingPricing({
   current,
