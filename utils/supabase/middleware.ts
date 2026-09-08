@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { redirectToAppPath, safeInternalPath } from "@/lib/paths";
+import { safeInternalPath } from "@/lib/paths";
+import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/boards", "/onboarding", "/checkout"];
 const AUTH_PREFIXES = ["/login", "/register", "/signup"];
@@ -20,41 +21,46 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+    const { pathname } = request.nextUrl;
 
-  if (!user && hasPrefix(pathname, PROTECTED_PREFIXES)) {
-    const next = `${pathname}${request.nextUrl.search}`;
-    return redirectToAppPath(`/login?next=${encodeURIComponent(next)}`);
-  }
-
-  if (user && hasPrefix(pathname, AUTH_PREFIXES)) {
-    const next = request.nextUrl.searchParams.get("next");
-    if (next) {
-      return redirectToAppPath(safeInternalPath(next));
+    if (!user && hasPrefix(pathname, PROTECTED_PREFIXES)) {
+      const next = `${pathname}${request.nextUrl.search}`;
+      return redirectToAppPath(`/login?next=${encodeURIComponent(next)}`);
     }
-    return redirectToAppPath("/onboarding");
-  }
 
-  return supabaseResponse;
+    if (user && hasPrefix(pathname, AUTH_PREFIXES)) {
+      const next = request.nextUrl.searchParams.get("next");
+      if (next) {
+        return redirectToAppPath(safeInternalPath(next));
+      }
+      return redirectToAppPath("/onboarding");
+    }
+
+    return supabaseResponse;
+  } catch (error) {
+    console.error("[middleware] session update failed", error);
+    return NextResponse.next({ request });
+  }
 }

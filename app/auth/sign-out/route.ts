@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
-import { redirectToAppPath } from "@/lib/paths";
+import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 
 export async function POST() {
   if (isSupabaseConfigured()) {

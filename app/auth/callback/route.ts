@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
-import { redirectToAppPath, safeInternalPath } from "@/lib/paths";
+import { safeInternalPath } from "@/lib/paths";
+import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

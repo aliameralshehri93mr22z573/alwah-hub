@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PAID_PLANS } from "@/lib/plans";
 import { paymentProvider } from "@/lib/billing";
-import { redirectToAppPath } from "@/lib/paths";
+import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 import {
   createCheckoutUrl,
   paidPlanFrom,
