@@ -18,8 +18,7 @@ type AuthMethod = "password" | "magic";
 
 function callbackUrl(nextPath: string) {
   const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "");
+    typeof window !== "undefined" ? window.location.origin : "";
   return `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 }
 

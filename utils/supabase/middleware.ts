@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { safeInternalPath } from "@/lib/paths";
+import { redirectToAppPath, safeInternalPath } from "@/lib/paths";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/boards", "/onboarding", "/checkout"];
 const AUTH_PREFIXES = ["/login", "/register", "/signup"];
@@ -44,22 +44,16 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && hasPrefix(pathname, PROTECTED_PREFIXES)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
-    redirectUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(redirectUrl);
+    const next = `${pathname}${request.nextUrl.search}`;
+    return redirectToAppPath(`/login?next=${encodeURIComponent(next)}`);
   }
 
   if (user && hasPrefix(pathname, AUTH_PREFIXES)) {
     const next = request.nextUrl.searchParams.get("next");
     if (next) {
-      return NextResponse.redirect(new URL(safeInternalPath(next), request.url));
+      return redirectToAppPath(safeInternalPath(next));
     }
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/onboarding";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    return redirectToAppPath("/onboarding");
   }
 
   return supabaseResponse;

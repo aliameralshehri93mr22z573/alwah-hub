@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PAID_PLANS } from "@/lib/plans";
 import { paymentProvider } from "@/lib/billing";
-import { siteUrl } from "@/lib/site";
+import { redirectToAppPath } from "@/lib/paths";
 import {
   createCheckoutUrl,
   paidPlanFrom,
@@ -12,14 +12,14 @@ import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
 async function handleCheckout(request: Request) {
-  const origin = siteUrl();
   const redirectMode = wantsRedirect(request);
   const fail = (status: number, error: string, login = false) => {
     if (redirectMode) {
-      const target = login
-        ? `${origin}/login?next=/checkout`
-        : `${origin}/pricing?error=${encodeURIComponent(error)}`;
-      return NextResponse.redirect(target);
+      return redirectToAppPath(
+        login
+          ? "/login?next=/checkout"
+          : `/pricing?error=${encodeURIComponent(error)}`,
+      );
     }
     return NextResponse.json({ error }, { status });
   };

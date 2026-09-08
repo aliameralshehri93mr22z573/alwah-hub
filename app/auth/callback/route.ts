@@ -1,26 +1,25 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
+import { redirectToAppPath, safeInternalPath } from "@/lib/paths";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/onboarding";
-  const safeNext = next.startsWith("/") ? next : "/onboarding";
+  const next = safeInternalPath(searchParams.get("next"));
 
   if (!isSupabaseConfigured()) {
-    return NextResponse.redirect(`${origin}/login`);
+    return redirectToAppPath("/login");
   }
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      const loginUrl = new URL("/login", origin);
-      loginUrl.searchParams.set("error", error.message);
-      return NextResponse.redirect(loginUrl);
+      return redirectToAppPath(
+        `/login?error=${encodeURIComponent(error.message)}`,
+      );
     }
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  return redirectToAppPath(next, 307);
 }
