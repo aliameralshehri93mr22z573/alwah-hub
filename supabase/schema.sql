@@ -135,12 +135,38 @@ alter table public.promo_codes
 create unique index if not exists promo_codes_code_unique_idx
   on public.promo_codes (upper(btrim(code)));
 
+create table if not exists public.workspace_invites (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces (id) on delete cascade,
+  email text not null,
+  role public.workspace_role not null default 'member',
+  token text not null,
+  is_used boolean not null default false,
+  invited_by uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.workspace_invites
+  add column if not exists role public.workspace_role not null default 'member';
+
+alter table public.workspace_invites
+  add column if not exists token text;
+
+alter table public.workspace_invites
+  add column if not exists is_used boolean not null default false;
+
+alter table public.workspace_invites
+  add column if not exists invited_by uuid references public.profiles (id) on delete set null;
+
 --------------------------------------------------------------------------------
 -- Indexes
 --------------------------------------------------------------------------------
 
 create index if not exists workspaces_owner_id_idx on public.workspaces (owner_id);
 create index if not exists workspace_members_user_id_idx on public.workspace_members (user_id);
+create unique index if not exists workspace_invites_token_idx on public.workspace_invites (token);
+create index if not exists workspace_invites_workspace_email_idx
+  on public.workspace_invites (workspace_id, lower(email));
 create index if not exists boards_workspace_id_idx on public.boards (workspace_id);
 create index if not exists columns_board_id_position_idx on public.columns (board_id, position);
 create index if not exists tasks_column_id_position_idx on public.tasks (column_id, position);
@@ -392,6 +418,39 @@ create policy "workspace_members_delete_admins_or_self"
     or public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
   );
 
+-- workspace_invites
+alter table public.workspace_invites enable row level security;
+
+drop policy if exists "workspace_invites_select_admins" on public.workspace_invites;
+create policy "workspace_invites_select_admins"
+  on public.workspace_invites
+  for select
+  to authenticated
+  using (
+    public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
+  );
+
+drop policy if exists "workspace_invites_insert_admins" on public.workspace_invites;
+create policy "workspace_invites_insert_admins"
+  on public.workspace_invites
+  for insert
+  to authenticated
+  with check (
+    public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
+  );
+
+drop policy if exists "workspace_invites_update_admins" on public.workspace_invites;
+create policy "workspace_invites_update_admins"
+  on public.workspace_invites
+  for update
+  to authenticated
+  using (
+    public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
+  )
+  with check (
+    public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
+  );
+
 -- boards
 drop policy if exists "boards_select_members" on public.boards;
 create policy "boards_select_members"
@@ -523,6 +582,7 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.workspaces to authenticated;
 grant select, insert, update, delete on public.workspace_members to authenticated;
+grant select, insert, update on public.workspace_invites to authenticated;
 grant select, insert, update, delete on public.boards to authenticated;
 grant select, insert, update, delete on public.columns to authenticated;
 grant select, insert, update, delete on public.tasks to authenticated;

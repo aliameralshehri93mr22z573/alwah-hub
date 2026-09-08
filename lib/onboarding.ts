@@ -107,19 +107,28 @@ export async function hasCompletedOnboarding(
   supabase: SupabaseClient,
   userId: string,
 ) {
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: memberships }, { data: owned }] = await Promise.all([
+    supabase
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", userId),
+    supabase.from("workspaces").select("id").eq("owner_id", userId),
+  ]);
 
-  if (!workspace?.id) {
+  const ownedIds = new Set((owned ?? []).map((row) => row.id as string));
+  const joinedOther = (memberships ?? []).some(
+    (row) => !ownedIds.has(row.workspace_id as string),
+  );
+  if (joinedOther) {
+    return true;
+  }
+
+  const workspaceId = (owned ?? [])[0]?.id as string | undefined;
+  if (!workspaceId) {
     return false;
   }
 
-  const boardId = await getFirstBoardId(supabase, workspace.id);
+  const boardId = await getFirstBoardId(supabase, workspaceId);
   return Boolean(boardId);
 }
 

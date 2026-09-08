@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import {
   assertCanAddMember,
   assertCanCreateBoard,
@@ -19,7 +20,7 @@ import {
 import { cookies } from "next/headers";
 
 export type PlanActionResult =
-  | { ok: true; boardId?: string }
+  | { ok: true; boardId?: string; inviteToken?: string }
   | {
       ok: false;
       reason: "boards" | "members" | "generic";
@@ -108,6 +109,9 @@ export async function inviteWorkspaceMember(
     .trim()
     .toLowerCase();
   const workspaceId = String(formData.get("workspaceId") ?? "");
+  const roleRaw = String(formData.get("role") ?? "member");
+  const role =
+    roleRaw === "admin" || roleRaw === "owner" ? roleRaw : "member";
   if (!email || !workspaceId) {
     return { ok: false, reason: "generic", message: "أدخل بريداً صالحاً." };
   }
@@ -119,6 +123,9 @@ export async function inviteWorkspaceMember(
   if (!user) {
     return { ok: false, reason: "generic", message: "يلزم تسجيل الدخول." };
   }
+  if (user.email?.toLowerCase() === email) {
+    return { ok: false, reason: "generic", message: "أنت عضو في المساحة بالفعل." };
+  }
 
   try {
     await assertCanAddMember(supabase, workspaceId);
@@ -129,139 +136,49 @@ export async function inviteWorkspaceMember(
     throw error;
   }
 
-  const memberId = await findUserIdByEmail(email);
-  if (!memberId) {
-    return {
-      ok: false,
-      reason: "generic",
-      message: "لا يوجد حساب بهذا البريد. اطلب من الزميل التسجيل أولاً.",
-    };
-  }
-  if (memberId === user.id) {
-    return { ok: false, reason: "generic", message: "أنت عضو في المساحة بالفعل." };
+  const writer = createAdminClient() ?? supabase;
+  const { data: existing } = await writer
+    .from("workspace_invites")
+    .select("token, is_used")
+    .eq("workspace_id", workspaceId)
+    .ilike("email", email)
+    .eq("is_used", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.token) {
+    return { ok: true, inviteToken: existing.token as string };
   }
 
-  const { error } = await supabase.from("workspace_members").insert({
+  const token = randomBytes(32).toString("hex");
+  const baseInvite = {
     workspace_id: workspaceId,
-    user_id: memberId,
-    role: "member",
-  });
-
-  if (error) {
-    if (error.code === "23505") {
-      return { ok: false, reason: "generic", message: "هذا العضو موجود مسبقاً." };
-    }
-    return { ok: false, reason: "generic", message: error.message };
-  }
-
-  return { ok: true };
-}
-
-function escapeIlikeExact(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
-}
-
-async function syncProfileEmail(
-  admin: NonNullable<ReturnType<typeof createAdminClient>>,
-  userId: string,
-  email: string,
-) {
-  const { data } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (data?.id) {
-    await admin.from("profiles").update({ email }).eq("id", userId);
-    return;
-  }
-
-  await admin.from("profiles").insert({
-    id: userId,
     email,
-    plan: "free",
-  });
-}
+    role,
+    token,
+    is_used: false,
+  };
+  let inserted = await writer
+    .from("workspace_invites")
+    .insert({ ...baseInvite, invited_by: user.id })
+    .select("token")
+    .single();
 
-async function findAuthUserIdByEmail(
-  admin: NonNullable<ReturnType<typeof createAdminClient>>,
-  email: string,
-) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (url && serviceKey) {
-    try {
-      const response = await fetch(
-        `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-          },
-          cache: "no-store",
-        },
-      );
-      if (response.ok) {
-        const payload = (await response.json()) as {
-          users?: { id: string; email?: string | null }[];
-        };
-        const match = payload.users?.find(
-          (item) => item.email?.toLowerCase() === email,
-        );
-        if (match?.id) {
-          return { id: match.id, email: match.email ?? email };
-        }
-      }
-    } catch {
-      // Fall through to a bounded listUsers scan.
-    }
+  if (inserted.error) {
+    inserted = await writer
+      .from("workspace_invites")
+      .insert(baseInvite)
+      .select("token")
+      .single();
   }
 
-  const { data } = await admin.auth.admin.listUsers({ perPage: 200, page: 1 });
-  const match = data.users.find((item) => item.email?.toLowerCase() === email);
-  return match?.id
-    ? { id: match.id, email: match.email ?? email }
-    : null;
-}
-
-async function findUserIdByEmail(email: string) {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) {
-    return null;
+  if (inserted.error) {
+    return { ok: false, reason: "generic", message: inserted.error.message };
   }
 
-  const admin = createAdminClient();
-  if (admin) {
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("id")
-      .ilike("email", escapeIlikeExact(normalized))
-      .maybeSingle();
-    if (profile?.id) {
-      return profile.id as string;
-    }
-
-    const byAuth = await findAuthUserIdByEmail(admin, normalized);
-    if (byAuth?.id) {
-      await syncProfileEmail(admin, byAuth.id, byAuth.email);
-      return byAuth.id;
-    }
-  }
-
-  const supabase = await createClient();
-  const rpc = await supabase.rpc("lookup_profile_id_by_email", {
-    p_email: normalized,
-  });
-  if (!rpc.error && typeof rpc.data === "string" && rpc.data) {
-    return rpc.data;
-  }
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("id")
-    .ilike("email", escapeIlikeExact(normalized))
-    .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+  return {
+    ok: true,
+    inviteToken: (inserted.data?.token as string | undefined) ?? token,
+  };
 }

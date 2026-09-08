@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, UserPlus } from "lucide-react";
+import { Check, Copy, Plus, UserPlus } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import {
   createWorkspaceBoard,
@@ -42,6 +42,8 @@ export function DashboardWorkspace({
   const router = useRouter();
   const [modal, setModal] = useState<UpgradeReason | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<"board" | "invite" | null>(null);
   const definition = planOf(plan);
 
@@ -74,8 +76,19 @@ export function DashboardWorkspace({
     }
   }
 
+  async function copyInviteLink() {
+    if (!inviteLink) {
+      return;
+    }
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
   async function onInvite(formData: FormData) {
     setInviteError(null);
+    setInviteLink(null);
+    setCopied(false);
     const atMemberLimit =
       definition.limits.maxMembers !== null &&
       (usage?.members ?? 1) >= definition.limits.maxMembers;
@@ -94,6 +107,11 @@ export function DashboardWorkspace({
       }
       setInviteError(result.message);
       return;
+    }
+    if (result.inviteToken) {
+      setInviteLink(
+        `${window.location.origin}/join?token=${result.inviteToken}`,
+      );
     }
     router.refresh();
   }
@@ -171,11 +189,12 @@ export function DashboardWorkspace({
       </section>
 
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-        <h2 className="text-xl font-bold">دعوة عضو</h2>
+        <h2 className="text-xl font-bold">دعوة الأعضاء</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
+          أدخل بريد المعلم وسنُنشئ رابط انضمام مباشر دون حاجة لحساب أو كلمة مرور.
           {definition.limits.maxMembers === null
-            ? "باقة مساحة العمل بلا حد عملي على عدد الأعضاء."
-            : `باقة مساحة العمل (${definition.name}) حتى ${definition.limits.maxMembers} أعضاء.`}{" "}
+            ? " باقة مساحة العمل بلا حد عملي على عدد الأعضاء."
+            : ` باقة مساحة العمل (${definition.name}) حتى ${definition.limits.maxMembers} أعضاء.`}{" "}
           الأعضاء الحاليون: {usage?.members ?? 1}
           {definition.limits.maxMembers !== null
             ? ` من ${definition.limits.maxMembers}.`
@@ -216,6 +235,26 @@ export function DashboardWorkspace({
             دعوة الأعضاء وترقية الباقة متاحتان لمالك المساحة فقط.
           </p>
         )}
+        {inviteLink ? (
+          <div className="mt-4 rounded-2xl border border-accent/30 bg-black/20 p-4">
+            <p className="text-sm font-semibold text-accent">رابط الانضمام جاهز</p>
+            <p className="mt-2 break-all text-sm text-slate-200" dir="ltr">
+              {inviteLink}
+            </p>
+            <button
+              type="button"
+              onClick={() => void copyInviteLink()}
+              className="mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              {copied ? (
+                <Check className="size-4" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              {copied ? "تم النسخ" : "نسخ رابط الانضمام"}
+            </button>
+          </div>
+        ) : null}
         {inviteError ? (
           <p className="mt-2 text-sm text-red-300">{inviteError}</p>
         ) : null}
