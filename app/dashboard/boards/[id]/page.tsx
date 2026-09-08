@@ -1,5 +1,9 @@
 import { BoardWorkspace } from "@/components/board/board-workspace";
-import { createDemoBoard } from "@/lib/demo-board";
+import {
+  createDemoBoard,
+  DEMO_CURRENT_USER_ID,
+  DEMO_MEMBERS,
+} from "@/lib/demo-board";
 import { fetchBoardSnapshot } from "@/app/dashboard/boards/[id]/actions";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 import { createClient } from "@/utils/supabase/server";
@@ -18,6 +22,8 @@ export default async function DashboardBoardPage({ params }: BoardPageProps) {
     return (
       <BoardWorkspace
         initialBoard={createDemoBoard()}
+        members={DEMO_MEMBERS}
+        currentUserId={DEMO_CURRENT_USER_ID}
         live={false}
       />
     );
@@ -37,5 +43,14 @@ export default async function DashboardBoardPage({ params }: BoardPageProps) {
     redirect("/dashboard");
   }
 
-  return <BoardWorkspace initialBoard={board} live />;
+  const { members, currentUserId, ...initialBoard } = board;
+
+  return (
+    <BoardWorkspace
+      initialBoard={initialBoard}
+      members={members}
+      currentUserId={currentUserId}
+      live
+    />
+  );
 }

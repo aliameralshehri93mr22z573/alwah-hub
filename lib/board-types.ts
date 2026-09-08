@@ -27,7 +27,14 @@ export type BoardTask = {
   due_date: string | null;
   position: number;
   custom_fields: CustomFields;
+  assigned_to: string | null;
   created_at: string;
+};
+
+export type WorkspaceMember = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
 };
 
 export type BoardColumn = {
@@ -73,4 +80,31 @@ export function reindexColumnTasks(tasks: BoardTask[], columnId: string): BoardT
     column_id: columnId,
     position: index,
   }));
+}
+
+export function memberLabel(member: Pick<WorkspaceMember, "full_name" | "email">) {
+  const name = member.full_name?.trim();
+  if (name) {
+    return name;
+  }
+  const email = member.email?.trim();
+  if (email) {
+    return email;
+  }
+  return "عضو";
+}
+
+export function memberInitial(member: Pick<WorkspaceMember, "full_name" | "email">) {
+  const first = Array.from(memberLabel(member))[0];
+  return first ? first.toUpperCase() : "?";
+}
+
+export function findMember(
+  members: WorkspaceMember[],
+  id: string | null | undefined,
+) {
+  if (!id) {
+    return null;
+  }
+  return members.find((member) => member.id === id) ?? null;
 }

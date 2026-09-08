@@ -89,9 +89,16 @@ create table if not exists public.tasks (
   due_date date,
   position integer not null default 0,
   custom_fields jsonb not null default '{}'::jsonb,
+  assigned_to uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
   constraint tasks_custom_fields_object check (jsonb_typeof(custom_fields) = 'object')
 );
+
+alter table public.workspace_members
+  add column if not exists role public.workspace_role not null default 'member';
+
+alter table public.tasks
+  add column if not exists assigned_to uuid references public.profiles (id) on delete set null;
 
 --------------------------------------------------------------------------------
 -- Indexes
@@ -104,6 +111,7 @@ create index if not exists columns_board_id_position_idx on public.columns (boar
 create index if not exists tasks_column_id_position_idx on public.tasks (column_id, position);
 create index if not exists tasks_due_date_idx on public.tasks (due_date);
 create index if not exists tasks_custom_fields_gin_idx on public.tasks using gin (custom_fields);
+create index if not exists tasks_assigned_to_idx on public.tasks (assigned_to);
 create index if not exists profiles_email_lower_idx
   on public.profiles (lower(btrim(email)));
 

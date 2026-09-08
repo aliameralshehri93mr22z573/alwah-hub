@@ -4,13 +4,14 @@ import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVertical } from "lucide-react";
 import { TaskCardContent, type CalendarMode } from "@/components/board/task-card";
-import type { BoardTask } from "@/lib/board-types";
+import type { BoardTask, WorkspaceMember } from "@/lib/board-types";
 import type { TemplateType } from "@/lib/templates";
 
 type SortableTaskCardProps = {
   task: BoardTask;
   templateType: TemplateType | "custom";
   calendar: CalendarMode;
+  members?: WorkspaceMember[];
   onOpen: (taskId: string) => void;
 };
 
@@ -18,6 +19,7 @@ export function SortableTaskCard({
   task,
   templateType,
   calendar,
+  members,
   onOpen,
 }: SortableTaskCardProps) {
   const {
@@ -58,6 +60,7 @@ export function SortableTaskCard({
           task={task}
           templateType={templateType}
           calendar={calendar}
+          members={members}
         />
       </button>
     </article>

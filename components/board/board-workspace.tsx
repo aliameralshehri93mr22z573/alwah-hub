@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, LayoutGrid, Table2 } from "lucide-react";
@@ -23,24 +23,78 @@ import {
   persistTaskUpdate,
   fetchBoardSnapshot,
 } from "@/app/dashboard/boards/[id]/actions";
-import type { BoardData, BoardTask } from "@/lib/board-types";
+import {
+  reindexColumnTasks,
+  type BoardData,
+  type BoardTask,
+  type WorkspaceMember,
+} from "@/lib/board-types";
+
+type AssigneeFilter = "all" | "mine";
 
 type BoardWorkspaceProps = {
   initialBoard: BoardData;
   live: boolean;
+  members?: WorkspaceMember[];
+  currentUserId?: string | null;
 };
+
+function filterBoardByAssignee(
+  board: BoardData,
+  filter: AssigneeFilter,
+  userId: string | null | undefined,
+): BoardData {
+  if (filter !== "mine" || !userId) {
+    return board;
+  }
+  return {
+    ...board,
+    columns: board.columns.map((column) => ({
+      ...column,
+      tasks: column.tasks.filter((task) => task.assigned_to === userId),
+    })),
+  };
+}
+
+function mergeFilteredBoard(
+  full: BoardData,
+  next: BoardData,
+  userId: string,
+): BoardData {
+  return {
+    ...full,
+    columns: full.columns.map((column) => {
+      const nextColumn = next.columns.find((item) => item.id === column.id);
+      const hidden = column.tasks.filter((task) => task.assigned_to !== userId);
+      const visible = nextColumn?.tasks ?? [];
+      return {
+        ...column,
+        tasks: reindexColumnTasks([...visible, ...hidden], column.id),
+      };
+    }),
+  };
+}
 
 export function BoardWorkspace({
   initialBoard,
   live = true,
+  members: initialMembers = [],
+  currentUserId = null,
 }: BoardWorkspaceProps) {
   const { app } = useLocale();
   const router = useRouter();
   const [board, setBoard] = useState(initialBoard);
+  const [members, setMembers] = useState(initialMembers);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [calendar, setCalendar] = useState<CalendarMode>("both");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
+
+  const displayedBoard = useMemo(
+    () => filterBoardByAssignee(board, assigneeFilter, currentUserId),
+    [assigneeFilter, board, currentUserId],
+  );
 
   const reload = useCallback(async () => {
     if (!live) {
@@ -48,7 +102,13 @@ export function BoardWorkspace({
     }
     const snapshot = await fetchBoardSnapshot(board.id);
     if (snapshot) {
-      setBoard(snapshot as BoardData);
+      setBoard({
+        id: snapshot.id,
+        title: snapshot.title,
+        template_type: snapshot.template_type,
+        columns: snapshot.columns,
+      });
+      setMembers(snapshot.members);
     }
   }, [board.id, live]);
 
@@ -66,15 +126,19 @@ export function BoardWorkspace({
   const selected = selectedId ? findTask(board, selectedId)?.task ?? null : null;
 
   function handleBoardChange(next: BoardData, persist: boolean) {
-    setBoard(next);
+    const merged =
+      assigneeFilter === "mine" && currentUserId
+        ? mergeFilteredBoard(board, next, currentUserId)
+        : next;
+    setBoard(merged);
     if (!persist || !live) {
       return;
     }
     void persistTaskMove({
       taskId: "",
       fromColumnId: board.columns[0]?.id ?? "",
-      toColumnId: next.columns[0]?.id ?? "",
-      orderedIdsByColumn: orderedIdsByColumn(next),
+      toColumnId: merged.columns[0]?.id ?? "",
+      orderedIdsByColumn: orderedIdsByColumn(merged),
     });
   }
 
@@ -89,6 +153,7 @@ export function BoardWorkspace({
         priority: task.priority,
         due_date: task.due_date,
         custom_fields: task.custom_fields,
+        assigned_to: task.assigned_to,
       });
     }
   }
@@ -110,6 +175,7 @@ export function BoardWorkspace({
           columnId,
           title: "مهمة جديدة",
           custom_fields,
+          assigned_to: null,
         });
         setBoard((current) => upsertTask(current, saved));
         setSelectedId(saved.id);
@@ -131,6 +197,7 @@ export function BoardWorkspace({
       position:
         board.columns.find((column) => column.id === columnId)?.tasks.length ?? 0,
       custom_fields,
+      assigned_to: null,
       created_at: new Date().toISOString(),
     };
 
@@ -159,6 +226,26 @@ export function BoardWorkspace({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full border border-white/10 bg-white/5 p-1 text-sm">
+            <button
+              type="button"
+              onClick={() => setAssigneeFilter("all")}
+              className={`rounded-full px-3 py-1.5 ${
+                assigneeFilter === "all" ? "bg-brand text-white" : "text-slate-300"
+              }`}
+            >
+              الكل
+            </button>
+            <button
+              type="button"
+              onClick={() => setAssigneeFilter("mine")}
+              className={`rounded-full px-3 py-1.5 ${
+                assigneeFilter === "mine" ? "bg-brand text-white" : "text-slate-300"
+              }`}
+            >
+              مهامي فقط
+            </button>
+          </div>
           <LanguageToggle />
           <div className="flex rounded-full border border-white/10 bg-white/5 p-1 text-sm">
             <button
@@ -208,16 +295,18 @@ export function BoardWorkspace({
 
       {view === "kanban" ? (
         <KanbanBoard
-          board={board}
+          board={displayedBoard}
           calendar={calendar}
+          members={members}
           onBoardChange={handleBoardChange}
           onOpenTask={setSelectedId}
           onAddTask={handleAddTask}
         />
       ) : (
         <TableView
-          board={board}
+          board={displayedBoard}
           calendar={calendar}
+          members={members}
           onOpenTask={setSelectedId}
         />
       )}
@@ -226,6 +315,7 @@ export function BoardWorkspace({
         task={selected}
         templateType={board.template_type}
         calendar={calendar}
+        members={members}
         onClose={() => setSelectedId(null)}
         onSave={(task) => {
           void handleSave(task);

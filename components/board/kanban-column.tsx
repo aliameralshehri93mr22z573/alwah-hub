@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { GripVertical, Plus } from "lucide-react";
 import { SortableTaskCard } from "@/components/board/sortable-task-card";
 import { TaskCardContent, type CalendarMode } from "@/components/board/task-card";
-import type { BoardColumn } from "@/lib/board-types";
+import type { BoardColumn, WorkspaceMember } from "@/lib/board-types";
 import type { TemplateType } from "@/lib/templates";
 
 export function columnDroppableId(columnId: string) {
@@ -20,6 +20,7 @@ type KanbanColumnProps = {
   column: BoardColumn;
   templateType: TemplateType | "custom";
   calendar: CalendarMode;
+  members?: WorkspaceMember[];
   onOpenTask: (taskId: string) => void;
   onAddTask: (columnId: string) => void;
 };
@@ -28,6 +29,7 @@ export function StaticKanbanColumn({
   column,
   templateType,
   calendar,
+  members,
   onOpenTask,
   onAddTask,
 }: KanbanColumnProps) {
@@ -52,6 +54,7 @@ export function StaticKanbanColumn({
                 task={task}
                 templateType={templateType}
                 calendar={calendar}
+                members={members}
               />
             </button>
           </article>
@@ -66,6 +69,7 @@ export function KanbanColumn({
   column,
   templateType,
   calendar,
+  members,
   onOpenTask,
   onAddTask,
 }: KanbanColumnProps) {
@@ -92,6 +96,7 @@ export function KanbanColumn({
               task={task}
               templateType={templateType}
               calendar={calendar}
+              members={members}
               onOpen={onOpenTask}
             />
           ))}

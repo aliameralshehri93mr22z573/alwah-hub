@@ -38,6 +38,7 @@ function asTask(record: Record<string, unknown>): BoardTask {
     due_date: (record.due_date as string | null) ?? null,
     position: Number(record.position ?? 0),
     custom_fields: asCustomFields(record.custom_fields),
+    assigned_to: record.assigned_to ? String(record.assigned_to) : null,
     created_at: String(record.created_at ?? new Date().toISOString()),
   };
 }

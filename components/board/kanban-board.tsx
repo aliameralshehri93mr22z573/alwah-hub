@@ -20,11 +20,12 @@ import {
   moveTaskInBoard,
   sameTaskOrder,
 } from "@/lib/board-move";
-import type { BoardData } from "@/lib/board-types";
+import type { BoardData, WorkspaceMember } from "@/lib/board-types";
 
 type KanbanBoardProps = {
   board: BoardData;
   calendar: CalendarMode;
+  members?: WorkspaceMember[];
   onBoardChange: (board: BoardData, persist: boolean) => void;
   onOpenTask: (taskId: string) => void;
   onAddTask: (columnId: string) => void;
@@ -33,6 +34,7 @@ type KanbanBoardProps = {
 export function KanbanBoard({
   board,
   calendar,
+  members,
   onBoardChange,
   onOpenTask,
   onAddTask,
@@ -138,6 +140,7 @@ export function KanbanBoard({
             column={column}
             templateType={board.template_type}
             calendar={calendar}
+            members={members}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
           />
@@ -161,6 +164,7 @@ export function KanbanBoard({
             column={column}
             templateType={board.template_type}
             calendar={calendar}
+            members={members}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
           />
@@ -173,6 +177,7 @@ export function KanbanBoard({
               task={activeTask}
               templateType={board.template_type}
               calendar={calendar}
+              members={members}
             />
           </div>
         ) : null}

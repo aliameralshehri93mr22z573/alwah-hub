@@ -1,5 +1,12 @@
 import { buildCustomFields, BOARD_TEMPLATES } from "@/lib/templates";
-import type { BoardData } from "@/lib/board-types";
+import type { BoardData, WorkspaceMember } from "@/lib/board-types";
+
+export const DEMO_MEMBERS: WorkspaceMember[] = [
+  { id: "demo-user-1", full_name: "نورة العتيبي", email: "noura@example.com" },
+  { id: "demo-user-2", full_name: "فهد الشمري", email: "fahd@example.com" },
+];
+
+export const DEMO_CURRENT_USER_ID = DEMO_MEMBERS[0].id;
 
 export function createDemoBoard(): BoardData {
   const template = BOARD_TEMPLATES.sales;
@@ -30,6 +37,7 @@ export function createDemoBoard(): BoardData {
                   },
                 ],
               },
+              assigned_to: DEMO_MEMBERS[0].id,
               created_at: now,
             },
             {
@@ -41,6 +49,7 @@ export function createDemoBoard(): BoardData {
               due_date: "2026-09-12",
               position: 1,
               custom_fields: buildCustomFields(template),
+              assigned_to: DEMO_MEMBERS[1].id,
               created_at: now,
             },
           ]
@@ -55,6 +64,7 @@ export function createDemoBoard(): BoardData {
                 due_date: "2026-09-08",
                 position: 0,
                 custom_fields: buildCustomFields(template),
+                assigned_to: null,
                 created_at: now,
               },
             ]

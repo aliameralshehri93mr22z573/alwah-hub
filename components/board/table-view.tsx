@@ -1,17 +1,23 @@
 "use client";
 
-import { TaskDateLabel, type CalendarMode } from "@/components/board/task-card";
+import { AssigneeAvatar, TaskDateLabel, type CalendarMode } from "@/components/board/task-card";
 import { PriorityBadge } from "@/components/board/priority-badge";
 import { fieldSchemaForTask, fieldValue, taskAttachments } from "@/lib/custom-fields";
-import type { BoardData } from "@/lib/board-types";
+import { findMember, memberLabel, type BoardData, type WorkspaceMember } from "@/lib/board-types";
 
 type TableViewProps = {
   board: BoardData;
   calendar: CalendarMode;
+  members?: WorkspaceMember[];
   onOpenTask: (taskId: string) => void;
 };
 
-export function TableView({ board, calendar, onOpenTask }: TableViewProps) {
+export function TableView({
+  board,
+  calendar,
+  members = [],
+  onOpenTask,
+}: TableViewProps) {
   const schema = board.columns
     .flatMap((column) =>
       column.tasks.flatMap((task) => fieldSchemaForTask(task, board.template_type)),
@@ -32,6 +38,7 @@ export function TableView({ board, calendar, onOpenTask }: TableViewProps) {
             <th className="px-4 py-3 font-medium">المهمة</th>
             <th className="px-4 py-3 font-medium">العمود</th>
             <th className="px-4 py-3 font-medium">الأولوية</th>
+            <th className="px-4 py-3 font-medium">المسؤول</th>
             <th className="px-4 py-3 font-medium">الاستحقاق</th>
             {schema.map((field) => (
               <th key={field.key} className="px-4 py-3 font-medium">
@@ -59,6 +66,20 @@ export function TableView({ board, calendar, onOpenTask }: TableViewProps) {
               <td className="px-4 py-3 text-slate-300">{column.title}</td>
               <td className="px-4 py-3">
                 <PriorityBadge priority={task.priority} />
+              </td>
+              <td className="px-4 py-3">
+                {(() => {
+                  const assignee = findMember(members, task.assigned_to);
+                  if (!assignee) {
+                    return <span className="text-slate-500">—</span>;
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-2">
+                      <AssigneeAvatar member={assignee} />
+                      <span className="text-slate-300">{memberLabel(assignee)}</span>
+                    </span>
+                  );
+                })()}
               </td>
               <td className="px-4 py-3">
                 <TaskDateLabel iso={task.due_date} calendar={calendar} />

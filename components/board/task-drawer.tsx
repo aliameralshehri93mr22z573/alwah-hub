@@ -12,9 +12,12 @@ import { useLocale } from "@/components/locale-provider";
 import { TASK_UI } from "@/lib/i18n";
 import {
   PRIORITY_LABELS,
+  findMember,
+  memberLabel,
   type BoardTask,
   type TaskAttachment,
   type TaskPriority,
+  type WorkspaceMember,
 } from "@/lib/board-types";
 import {
   fieldSchemaForTask,
@@ -33,6 +36,7 @@ type TaskDrawerProps = {
   calendar: CalendarMode;
   onClose: () => void;
   onSave: (task: BoardTask) => void;
+  members?: WorkspaceMember[];
 };
 
 export function TaskDrawer({
@@ -41,6 +45,7 @@ export function TaskDrawer({
   calendar,
   onClose,
   onSave,
+  members = [],
 }: TaskDrawerProps) {
   const { locale } = useLocale();
   const ui = TASK_UI[locale];
@@ -230,6 +235,27 @@ export function TaskDrawer({
               <TaskDateLabel iso={draft.due_date} calendar={calendar} />
             </p>
           ) : null}
+        </label>
+
+        <label className="mb-4 block text-sm">
+          <span className="mb-1.5 block text-slate-300">{ui.assignee}</span>
+          <select
+            value={draft.assigned_to ?? ""}
+            onChange={(event) =>
+              update({ assigned_to: event.target.value || null })
+            }
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 outline-none"
+          >
+            <option value="">{ui.unassigned}</option>
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {memberLabel(member)}
+              </option>
+            ))}
+            {draft.assigned_to && !findMember(members, draft.assigned_to) ? (
+              <option value={draft.assigned_to}>{draft.assigned_to}</option>
+            ) : null}
+          </select>
         </label>
 
         {fields.length > 0 ? (
