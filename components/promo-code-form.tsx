@@ -27,6 +27,9 @@ export function PromoCodeForm({
     if (result.ok) {
       router.refresh();
       onApplied?.();
+      window.setTimeout(() => {
+        router.push("/dashboard");
+      }, 1000);
     }
   }
 
