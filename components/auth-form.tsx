@@ -4,10 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { Mail, RectangleEllipsis } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 import { safeInternalPath } from "@/lib/paths";
 import { toArabicAuthError } from "@/lib/auth-errors";
-import { createClient } from "@/utils/supabase/client";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
+
+function getBrowserClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE");
+  }
+  return createBrowserClient(url, anonKey);
+}
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -45,7 +54,7 @@ export function AuthForm({ mode, nextPath }: AuthFormProps) {
         throw new Error("Missing NEXT_PUBLIC_SUPABASE");
       }
 
-      const supabase = createClient();
+      const supabase = getBrowserClient();
       const emailRedirectTo = callbackUrl(destination);
 
       if (method === "magic") {

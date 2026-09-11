@@ -1,10 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { safeInternalPath } from "@/lib/paths";
 import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/boards", "/onboarding", "/checkout"];
-const AUTH_PREFIXES = ["/login", "/register", "/signup"];
+const AUTH_PUBLIC_PREFIXES = ["/login", "/register", "/signup"];
 
 function hasPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some(
@@ -45,17 +44,13 @@ export async function updateSession(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
+    if (hasPrefix(pathname, AUTH_PUBLIC_PREFIXES)) {
+      return supabaseResponse;
+    }
+
     if (!user && hasPrefix(pathname, PROTECTED_PREFIXES)) {
       const next = `${pathname}${request.nextUrl.search}`;
       return redirectToAppPath(`/login?next=${encodeURIComponent(next)}`);
-    }
-
-    if (user && hasPrefix(pathname, AUTH_PREFIXES)) {
-      const next = request.nextUrl.searchParams.get("next");
-      if (next) {
-        return redirectToAppPath(safeInternalPath(next));
-      }
-      return redirectToAppPath("/onboarding");
     }
 
     return supabaseResponse;
