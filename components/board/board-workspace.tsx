@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, LayoutGrid, Table2 } from "lucide-react";
+import { BoardTitleEditor } from "@/components/board-title-editor";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useLocale } from "@/components/locale-provider";
 import { KanbanBoard } from "@/components/board/kanban-board";
@@ -17,6 +18,7 @@ import {
 } from "@/hooks/use-board-realtime";
 import { findTask, orderedIdsByColumn, upsertTask } from "@/lib/board-move";
 import { buildCustomFields, BOARD_TEMPLATES } from "@/lib/templates";
+import { renameWorkspaceBoard } from "@/app/dashboard/actions";
 import {
   persistNewTask,
   persistTaskMove,
@@ -205,6 +207,22 @@ export function BoardWorkspace({
     setSelectedId(localTask.id);
   }
 
+  async function handleRename(nextTitle: string) {
+    const previous = board.title;
+    setBoard((current) => ({ ...current, title: nextTitle }));
+    if (!live) {
+      return;
+    }
+    const result = await renameWorkspaceBoard(board.id, nextTitle);
+    if (!result.ok) {
+      setBoard((current) => ({ ...current, title: previous }));
+      setLimitMessage(result.message);
+      return;
+    }
+    setBoard((current) => ({ ...current, title: result.title }));
+    router.refresh();
+  }
+
   return (
     <div className="flex min-h-full flex-col px-4 py-6 pb-8 sm:px-6 md:pb-6">
       <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -216,7 +234,7 @@ export function BoardWorkspace({
             <ArrowRight className="size-4 ltr:rotate-180" aria-hidden />
             {app.dashboard}
           </Link>
-          <h1 className="text-3xl font-extrabold">{board.title}</h1>
+          <BoardTitleEditor title={board.title} onSave={handleRename} />
           {!live ? (
             <p className="mt-1 text-sm text-amber-200">
               عرض تجريبي — اربط Supabase لتفعيل المزامنة المباشرة بين أعضاء المساحة.

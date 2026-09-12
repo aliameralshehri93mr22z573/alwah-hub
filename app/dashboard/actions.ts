@@ -182,3 +182,40 @@ export async function inviteWorkspaceMember(
     inviteToken: (inserted.data?.token as string | undefined) ?? token,
   };
 }
+
+export async function renameWorkspaceBoard(
+  boardId: string,
+  title: string,
+): Promise<{ ok: true; title: string } | { ok: false; message: string }> {
+  const nextTitle = title.trim();
+  if (!nextTitle) {
+    return { ok: false, message: "أدخل اسماً للوحة." };
+  }
+
+  if (!isSupabaseConfigured() || boardId === "demo" || boardId.startsWith("demo-")) {
+    const boards = await readDemoBoards();
+    const jar = await cookies();
+    jar.set(
+      DEMO_BOARDS_COOKIE,
+      JSON.stringify(
+        boards.map((board) =>
+          board.id === boardId ? { ...board, title: nextTitle } : board,
+        ),
+      ),
+      demoCookieOptions(),
+    );
+    return { ok: true, title: nextTitle };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("boards")
+    .update({ title: nextTitle })
+    .eq("id", boardId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, title: nextTitle };
+}
