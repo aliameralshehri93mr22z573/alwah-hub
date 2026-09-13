@@ -451,6 +451,92 @@ create policy "workspace_invites_update_admins"
     public.has_workspace_role(workspace_id, array['owner', 'admin']::public.workspace_role[])
   );
 
+create or replace function public.lookup_invite_by_token(p_token text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_invite public.workspace_invites%rowtype;
+begin
+  select * into v_invite
+  from public.workspace_invites
+  where token = btrim(coalesce(p_token, ''))
+  limit 1;
+
+  if v_invite.id is null then
+    return null;
+  end if;
+
+  return json_build_object(
+    'id', v_invite.id,
+    'workspace_id', v_invite.workspace_id,
+    'email', v_invite.email,
+    'role', v_invite.role,
+    'token', v_invite.token,
+    'is_used', v_invite.is_used
+  );
+end;
+$$;
+
+create or replace function public.accept_invite_by_token(p_token text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_invite public.workspace_invites%rowtype;
+  v_role public.workspace_role;
+begin
+  if v_user is null then
+    return json_build_object('ok', false, 'message', 'يلزم إنشاء جلسة أولاً.');
+  end if;
+
+  select * into v_invite
+  from public.workspace_invites
+  where token = btrim(coalesce(p_token, ''))
+  limit 1;
+
+  if v_invite.id is null then
+    return json_build_object('ok', false, 'message', 'رابط الدعوة غير صالح أو منتهٍ.');
+  end if;
+
+  v_role := case
+    when v_invite.role in ('admin', 'owner') then v_invite.role
+    else 'member'
+  end;
+
+  insert into public.profiles (id, email, plan)
+  values (v_user, v_invite.email, 'free')
+  on conflict (id) do update
+    set email = coalesce(excluded.email, public.profiles.email);
+
+  insert into public.workspace_members (workspace_id, user_id, role)
+  values (v_invite.workspace_id, v_user, v_role)
+  on conflict (workspace_id, user_id) do update
+    set role = excluded.role;
+
+  update public.workspace_invites
+  set is_used = true
+  where id = v_invite.id;
+
+  return json_build_object(
+    'ok', true,
+    'workspace_id', v_invite.workspace_id,
+    'email', v_invite.email,
+    'role', v_role
+  );
+end;
+$$;
+
+revoke all on function public.lookup_invite_by_token(text) from public;
+revoke all on function public.accept_invite_by_token(text) from public;
+grant execute on function public.lookup_invite_by_token(text) to anon, authenticated, service_role;
+grant execute on function public.accept_invite_by_token(text) to anon, authenticated, service_role;
+
 -- boards
 drop policy if exists "boards_select_members" on public.boards;
 create policy "boards_select_members"

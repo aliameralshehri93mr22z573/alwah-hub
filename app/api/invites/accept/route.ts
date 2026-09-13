@@ -141,20 +141,22 @@ export async function POST(request: Request) {
     }
 
     if (!isSupabaseConfigured()) {
-      console.error("[invites/accept] Supabase public env is missing");
+      const error =
+        "NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing";
+      console.error("Invite Activation Error:", error);
       return NextResponse.json(
-        { ok: false, message: "تعذّر تفعيل الدعوة حالياً." },
+        { ok: false, message: error, error, stage: "env" },
         { status: 503 },
       );
     }
 
     const admin = createAdminClient();
     if (!admin) {
-      console.error(
-        "[invites/accept] service_role client is unavailable; set SUPABASE_SERVICE_ROLE_KEY",
-      );
+      const error =
+        "SUPABASE_SERVICE_ROLE_KEY is missing on the server. Add it in Render Environment, then redeploy.";
+      console.error("Invite Activation Error:", error);
       return NextResponse.json(
-        { ok: false, message: "تعذّر تفعيل الدعوة. تواصل مع مدير النظام." },
+        { ok: false, message: error, error, stage: "admin_client" },
         { status: 503 },
       );
     }
@@ -250,17 +252,19 @@ export async function POST(request: Request) {
       token_hash: tokenHash,
       access_token: accessToken,
       refresh_token: refreshToken,
-      redirectTo: "/dashboard",
+      workspace_id: row.workspace_id,
+      redirectTo: `/dashboard?workspace=${row.workspace_id}`,
     });
   } catch (error) {
-    console.error("[invites/accept] unexpected failure", error);
+    const message =
+      error instanceof Error ? error.message : String(error ?? "unknown");
+    console.error("Invite Activation Error:", error);
     return NextResponse.json(
       {
         ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "تعذّر تفعيل الدعوة. حاول مرة أخرى.",
+        message,
+        error: message,
+        stage: "unexpected",
       },
       { status: 500 },
     );

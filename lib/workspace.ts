@@ -16,6 +16,7 @@ function asRole(value: unknown): WorkspaceRole {
 export async function resolveCurrentWorkspace(
   supabase: SupabaseClient,
   userId: string,
+  preferredWorkspaceId?: string | null,
 ): Promise<CurrentWorkspace | null> {
   const [{ data: memberships }, { data: workspaces }] = await Promise.all([
     supabase
@@ -45,7 +46,12 @@ export async function resolveCurrentWorkspace(
     };
   });
 
+  const preferred = preferredWorkspaceId
+    ? accessible.find((item) => item.id === preferredWorkspaceId)
+    : null;
+
   return (
+    preferred ??
     accessible.find((item) => item.ownerId !== userId) ??
     accessible.find((item) => item.ownerId === userId) ??
     null

@@ -30,7 +30,11 @@ type DashboardBoard = {
   columns: { title: string }[];
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workspace?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     const plan = await effectivePlan(null);
     const boards = await readDemoBoards();
@@ -67,7 +71,12 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const workspace = await resolveCurrentWorkspace(supabase, user.id);
+  const { workspace: preferredWorkspace } = await searchParams;
+  const workspace = await resolveCurrentWorkspace(
+    supabase,
+    user.id,
+    preferredWorkspace?.trim() || null,
+  );
 
   let boards: DashboardBoard[] = [];
   let plan: PlanTier = "free";
