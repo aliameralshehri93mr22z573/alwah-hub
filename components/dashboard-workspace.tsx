@@ -17,6 +17,8 @@ import {
 import { planOf, type PlanTier } from "@/lib/plans";
 import type { TemplateType } from "@/lib/templates";
 import { BOARD_TEMPLATES } from "@/lib/templates";
+import { DashboardKpis } from "@/components/dashboard-kpis";
+import type { WorkspaceKpis } from "@/lib/workspace-kpis";
 
 export type DashboardBoardCard = {
   id: string;
@@ -32,6 +34,7 @@ export function DashboardWorkspace({
   usage,
   live,
   canInvite = true,
+  kpis,
 }: {
   workspaceId: string | null;
   boards: DashboardBoardCard[];
@@ -39,6 +42,7 @@ export function DashboardWorkspace({
   usage: { boards: number; members: number; activeTasks: number } | null;
   live: boolean;
   canInvite?: boolean;
+  kpis: WorkspaceKpis;
 }) {
   const router = useRouter();
   const [modal, setModal] = useState<UpgradeReason | null>(null);
@@ -148,6 +152,8 @@ export function DashboardWorkspace({
 
   return (
     <>
+      <DashboardKpis kpis={kpis} />
+
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold">الألواح</h2>

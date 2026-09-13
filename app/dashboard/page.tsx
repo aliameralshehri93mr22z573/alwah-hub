@@ -17,6 +17,11 @@ import {
 } from "@/lib/workspace";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
+import {
+  emptyWorkspaceKpis,
+  workspaceKpis,
+  type WorkspaceKpis,
+} from "@/lib/workspace-kpis";
 
 type DashboardBoard = {
   id: string;
@@ -44,6 +49,7 @@ export default async function DashboardPage() {
         live={false}
         canManagePlan
         canInvite
+        kpis={emptyWorkspaceKpis()}
       />
     );
   }
@@ -67,16 +73,19 @@ export default async function DashboardPage() {
   let plan: PlanTier = "free";
   let usage: { boards: number; members: number; activeTasks: number } | null =
     null;
+  let kpis: WorkspaceKpis = emptyWorkspaceKpis();
 
   if (workspace?.id) {
-    const [{ data: boardRows }, stats] = await Promise.all([
+    const [{ data: boardRows }, stats, computedKpis] = await Promise.all([
       supabase
         .from("boards")
         .select("id, title, template_type, columns(title, position)")
         .eq("workspace_id", workspace.id)
         .order("created_at", { ascending: true }),
       workspaceUsage(supabase, workspace.id),
+      workspaceKpis(supabase, workspace.id),
     ]);
+    kpis = computedKpis;
 
     plan = stats?.plan ?? (await effectivePlan("free"));
     usage = stats
@@ -115,6 +124,7 @@ export default async function DashboardPage() {
       live
       canManagePlan={isWorkspaceOwner(workspace, user.id)}
       canInvite={canInviteWorkspaceMembers(workspace)}
+      kpis={kpis}
     />
   );
 }
@@ -129,6 +139,7 @@ function DashboardFrame({
   live,
   canManagePlan,
   canInvite,
+  kpis,
 }: {
   email: string | null;
   workspaceId: string | null;
@@ -139,6 +150,7 @@ function DashboardFrame({
   live: boolean;
   canManagePlan: boolean;
   canInvite: boolean;
+  kpis: WorkspaceKpis;
 }) {
   return (
     <div className="flex min-h-full flex-col">
@@ -176,6 +188,7 @@ function DashboardFrame({
           usage={usage}
           live={live}
           canInvite={canInvite}
+          kpis={kpis}
         />
       </main>
     </div>
