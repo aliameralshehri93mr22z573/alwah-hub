@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  ACTIVE_WORKSPACE_COOKIE,
+  isWorkspaceId,
+} from "@/lib/active-workspace";
 import { redirectToAppPath } from "@/lib/redirect-to-app-path";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/boards", "/onboarding", "/checkout"];
@@ -51,6 +55,15 @@ export async function updateSession(request: NextRequest) {
     if (!user && hasPrefix(pathname, PROTECTED_PREFIXES)) {
       const next = `${pathname}${request.nextUrl.search}`;
       return redirectToAppPath(`/login?next=${encodeURIComponent(next)}`);
+    }
+
+    const requestedWorkspace = request.nextUrl.searchParams.get("workspace");
+    if (isWorkspaceId(requestedWorkspace)) {
+      supabaseResponse.cookies.set(ACTIVE_WORKSPACE_COOKIE, requestedWorkspace, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+        sameSite: "lax",
+      });
     }
 
     return supabaseResponse;

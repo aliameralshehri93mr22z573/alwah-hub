@@ -158,3 +158,15 @@ export function grantedWorkspacePlan(
 export function planOf(tier: string | null | undefined): PlanDefinition {
   return isPlanTier(tier ?? "") ? PLANS[tier as PlanTier] : PLANS.free;
 }
+
+const PLAN_RANK: Record<PlanTier, number> = {
+  free: 0,
+  solo: 1,
+  team: 2,
+  agency: 3,
+  pro: 4,
+};
+
+export function planRank(tier: string | null | undefined) {
+  return PLAN_RANK[storedPlanTier(tier)];
+}

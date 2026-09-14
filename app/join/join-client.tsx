@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { persistActiveWorkspaceClient } from "@/lib/active-workspace";
 
 type InviteRow = {
   id?: string;
@@ -24,8 +25,6 @@ type AcceptResponse = {
   workspace_id?: string;
   redirectTo?: string;
 };
-
-const WORKSPACE_COOKIE = "alwahhub_workspace";
 
 function formatError(error: unknown) {
   if (!error) {
@@ -56,15 +55,14 @@ function browserClient() {
 }
 
 function persistGuestIdentity(workspaceId: string, email?: string | null) {
+  persistActiveWorkspaceClient(workspaceId);
   try {
-    window.localStorage.setItem("current_workspace_id", workspaceId);
     if (email) {
       window.localStorage.setItem("member_email", email);
     }
   } catch (error) {
     console.error("Invite Activation Error:", error);
   }
-  document.cookie = `${WORKSPACE_COOKIE}=${workspaceId}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
 }
 
 async function lookupInvite(token: string): Promise<InviteRow> {

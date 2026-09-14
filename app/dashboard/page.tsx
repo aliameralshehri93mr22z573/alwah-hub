@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { Kanban, LogOut } from "lucide-react";
+import { ActiveWorkspaceSync } from "@/components/active-workspace-sync";
 import { DashboardWorkspace } from "@/components/dashboard-workspace";
 import { PlanBanner } from "@/components/plan-banner";
+import { writeActiveWorkspaceId } from "@/lib/active-workspace-server";
+import { isIsolatedDemoBoard } from "@/lib/demo-board";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { workspaceUsage } from "@/lib/plan-limits";
 import { type PlanTier } from "@/lib/plans";
@@ -12,6 +15,8 @@ import {
 import { isTemplateType, type TemplateType } from "@/lib/templates";
 import {
   canInviteWorkspaceMembers,
+  canManageWorkspaceBoards,
+  isWorkspaceMemberOnly,
   isWorkspaceOwner,
   resolveCurrentWorkspace,
 } from "@/lib/workspace";
@@ -53,6 +58,8 @@ export default async function DashboardPage({
         live={false}
         canManagePlan
         canInvite
+        canManageBoards
+        kpiAudience="admin"
         kpis={emptyWorkspaceKpis()}
       />
     );
@@ -67,17 +74,24 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
-  if (!(await hasCompletedOnboarding(supabase, user.id))) {
-    redirect("/onboarding");
-  }
-
   const { workspace: preferredWorkspace } = await searchParams;
   const workspace = await resolveCurrentWorkspace(
     supabase,
     user.id,
     preferredWorkspace?.trim() || null,
   );
+  if (workspace?.id) {
+    await writeActiveWorkspaceId(workspace.id);
+  }
 
+  if (
+    !(await hasCompletedOnboarding(supabase, user.id)) &&
+    !(workspace && workspace.ownerId !== user.id)
+  ) {
+    redirect("/onboarding");
+  }
+
+  const memberOnly = isWorkspaceMemberOnly(workspace);
   let boards: DashboardBoard[] = [];
   let plan: PlanTier = "free";
   let usage: { boards: number; members: number; activeTasks: number } | null =
@@ -92,7 +106,11 @@ export default async function DashboardPage({
         .eq("workspace_id", workspace.id)
         .order("created_at", { ascending: true }),
       workspaceUsage(supabase, workspace.id),
-      workspaceKpis(supabase, workspace.id),
+      workspaceKpis(
+        supabase,
+        workspace.id,
+        memberOnly ? { assignedTo: user.id } : undefined,
+      ),
     ]);
     kpis = computedKpis;
 
@@ -105,21 +123,23 @@ export default async function DashboardPage({
         }
       : null;
 
-    boards = (boardRows ?? []).map((data) => {
-      const columns = [
-        ...((data.columns as { title: string; position: number }[]) ?? []),
-      ]
-        .sort((a, b) => a.position - b.position)
-        .map((column) => ({ title: column.title }));
-      return {
-        id: data.id as string,
-        title: data.title as string,
-        template_type: isTemplateType(String(data.template_type))
-          ? data.template_type
-          : "custom",
-        columns,
-      };
-    });
+    boards = (boardRows ?? [])
+      .filter((data) => !memberOnly || !isIsolatedDemoBoard(data))
+      .map((data) => {
+        const columns = [
+          ...((data.columns as { title: string; position: number }[]) ?? []),
+        ]
+          .sort((a, b) => a.position - b.position)
+          .map((column) => ({ title: column.title }));
+        return {
+          id: data.id as string,
+          title: data.title as string,
+          template_type: isTemplateType(String(data.template_type))
+            ? data.template_type
+            : "custom",
+          columns,
+        };
+      });
   }
 
   return (
@@ -133,6 +153,8 @@ export default async function DashboardPage({
       live
       canManagePlan={isWorkspaceOwner(workspace, user.id)}
       canInvite={canInviteWorkspaceMembers(workspace)}
+      canManageBoards={canManageWorkspaceBoards(workspace)}
+      kpiAudience={memberOnly ? "member" : "admin"}
       kpis={kpis}
     />
   );
@@ -148,6 +170,8 @@ function DashboardFrame({
   live,
   canManagePlan,
   canInvite,
+  canManageBoards,
+  kpiAudience,
   kpis,
 }: {
   email: string | null;
@@ -159,10 +183,13 @@ function DashboardFrame({
   live: boolean;
   canManagePlan: boolean;
   canInvite: boolean;
+  canManageBoards: boolean;
+  kpiAudience: "admin" | "member";
   kpis: WorkspaceKpis;
 }) {
   return (
     <div className="flex min-h-full flex-col">
+      <ActiveWorkspaceSync workspaceId={workspaceId} />
       <PlanBanner plan={plan} canManagePlan={canManagePlan} />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
         <header className="mb-6 flex items-center justify-between gap-3">
@@ -197,6 +224,8 @@ function DashboardFrame({
           usage={usage}
           live={live}
           canInvite={canInvite}
+          canManageBoards={canManageBoards}
+          kpiAudience={kpiAudience}
           kpis={kpis}
         />
       </main>

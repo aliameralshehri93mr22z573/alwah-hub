@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/active-workspace";
+import { activeWorkspaceCookieOptions } from "@/lib/active-workspace-server";
 import { createAdminClient, serviceRoleKey } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
@@ -66,7 +68,11 @@ async function ensureAuthUser(admin: AdminClient, email: string) {
   const created = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { full_name: email.split("@")[0] ?? "" },
+    user_metadata: {
+      full_name: email.split("@")[0] ?? "",
+      invite_email: email,
+      skip_workspace: "true",
+    },
   });
 
   if (created.data.user?.id) {
@@ -247,7 +253,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       token_hash: tokenHash,
       access_token: accessToken,
@@ -255,6 +261,12 @@ export async function POST(request: Request) {
       workspace_id: row.workspace_id,
       redirectTo: `/dashboard?workspace=${row.workspace_id}`,
     });
+    response.cookies.set(
+      ACTIVE_WORKSPACE_COOKIE,
+      row.workspace_id,
+      activeWorkspaceCookieOptions(),
+    );
+    return response;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : String(error ?? "unknown");

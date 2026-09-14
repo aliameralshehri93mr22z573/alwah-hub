@@ -110,6 +110,7 @@ async function fetchWorkspaceMembers(
 }
 
 export type BoardSnapshot = BoardData & {
+  workspaceId: string;
   members: WorkspaceMember[];
   currentUserId: string | null;
 };
@@ -233,6 +234,7 @@ export async function fetchBoardSnapshot(boardId: string): Promise<BoardSnapshot
 
   return {
     id: board.id as string,
+    workspaceId: board.workspace_id as string,
     title: board.title as string,
     template_type: isTemplateType(String(board.template_type))
       ? (board.template_type as TemplateType)

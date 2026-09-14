@@ -10,7 +10,7 @@ export function MobileNav() {
   const { app } = useLocale();
   const items = [
     { href: "/dashboard", label: app.home, icon: LayoutDashboard },
-    { href: "/dashboard/boards/demo", label: app.boards, icon: Kanban },
+    { href: "/dashboard#boards", label: app.boards, icon: Kanban },
     { href: "/dashboard/reports", label: app.reports, icon: BarChart3 },
     { href: "/pricing", label: app.plans, icon: CreditCard },
   ];

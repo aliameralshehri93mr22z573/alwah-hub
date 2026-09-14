@@ -179,6 +179,7 @@ export function buildWorkspaceKpis(
 export async function workspaceKpis(
   supabase: SupabaseClient,
   workspaceId: string,
+  options?: { assignedTo?: string | null },
 ): Promise<WorkspaceKpis> {
   const { data: boards, error: boardsError } = await supabase
     .from("boards")
@@ -219,10 +220,15 @@ export async function workspaceKpis(
     return buildWorkspaceKpis(boardRows, [], []);
   }
 
-  const { data: tasks, error: tasksError } = await supabase
+  let tasksQuery = supabase
     .from("tasks")
-    .select("id, column_id")
+    .select("id, column_id, assigned_to")
     .in("column_id", columnIds);
+  if (options?.assignedTo) {
+    tasksQuery = tasksQuery.eq("assigned_to", options.assignedTo);
+  }
+
+  const { data: tasks, error: tasksError } = await tasksQuery;
 
   if (tasksError) {
     throw tasksError;

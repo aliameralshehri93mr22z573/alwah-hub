@@ -5,6 +5,7 @@ import {
   buildCustomFields,
   type TemplateType,
 } from "@/lib/templates";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 
 type ProvisionResult = {
   workspaceId: string;
@@ -55,6 +56,11 @@ export async function ensureWorkspace(
   templateType: TemplateType = DEFAULT_TEMPLATE,
 ) {
   await ensureProfile(supabase, user);
+
+  const shared = await resolveCurrentWorkspace(supabase, user.id);
+  if (shared && shared.ownerId !== user.id) {
+    return shared.id;
+  }
 
   const existing = await supabase
     .from("workspaces")
@@ -204,6 +210,18 @@ export async function completeOnboarding(
   user: User,
   templateType: TemplateType,
 ): Promise<ProvisionResult> {
+  const shared = await resolveCurrentWorkspace(supabase, user.id);
+  if (shared && shared.ownerId !== user.id) {
+    await supabase
+      .from("profiles")
+      .update({ onboarded_at: new Date().toISOString() })
+      .eq("id", user.id);
+    return {
+      workspaceId: shared.id,
+      boardId: await getFirstBoardId(supabase, shared.id),
+    };
+  }
+
   const rpc = await supabase.rpc("complete_onboarding", {
     p_template: templateType,
   });

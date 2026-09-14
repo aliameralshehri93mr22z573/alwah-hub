@@ -6,7 +6,10 @@ import {
   assertCanCreateBoard,
   PlanLimitError,
 } from "@/lib/plan-limits";
-import { resolveCurrentWorkspace } from "@/lib/workspace";
+import {
+  canManageWorkspaceBoards,
+  resolveCurrentWorkspace,
+} from "@/lib/workspace";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
@@ -60,6 +63,13 @@ export async function createWorkspaceBoard(): Promise<PlanActionResult> {
 
   if (!workspace) {
     return { ok: false, reason: "generic", message: "أكمل التهيئة أولاً." };
+  }
+  if (!canManageWorkspaceBoards(workspace)) {
+    return {
+      ok: false,
+      reason: "generic",
+      message: "إنشاء الألواح متاح لمدير مساحة العمل فقط.",
+    };
   }
 
   try {

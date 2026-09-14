@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { TemplatePicker } from "@/app/onboarding/template-picker";
 import { ensureWorkspace, hasCompletedOnboarding } from "@/lib/onboarding";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
@@ -16,8 +17,14 @@ export default async function OnboardingPage() {
       redirect("/login");
     }
 
-    if (await hasCompletedOnboarding(supabase, user.id)) {
-      redirect("/dashboard");
+    const current = await resolveCurrentWorkspace(supabase, user.id);
+    if (
+      (await hasCompletedOnboarding(supabase, user.id)) ||
+      (current && current.ownerId !== user.id)
+    ) {
+      redirect(
+        current ? `/dashboard?workspace=${current.id}` : "/dashboard",
+      );
     }
 
     try {

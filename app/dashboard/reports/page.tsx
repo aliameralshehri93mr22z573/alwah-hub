@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ActiveWorkspaceSync } from "@/components/active-workspace-sync";
+import { writeActiveWorkspaceId } from "@/lib/active-workspace-server";
 import { workspaceUsage } from "@/lib/plan-limits";
 import { planOf } from "@/lib/plans";
 import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workspace?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-10 pb-28 md:pb-10">
@@ -29,16 +35,25 @@ export default async function ReportsPage() {
     redirect("/login?next=/dashboard/reports");
   }
 
-  const workspace = await resolveCurrentWorkspace(supabase, user.id);
+  const { workspace: preferredWorkspace } = await searchParams;
+  const workspace = await resolveCurrentWorkspace(
+    supabase,
+    user.id,
+    preferredWorkspace?.trim() || null,
+  );
+  if (workspace?.id) {
+    await writeActiveWorkspaceId(workspace.id);
+  }
   const usage = workspace
     ? await workspaceUsage(supabase, workspace.id)
     : null;
-  const plan = planOf(usage?.plan ?? "free");
+  const plan = planOf(usage?.plan ?? workspace?.plan ?? "free");
   const canManagePlan = workspace?.ownerId === user.id;
 
   if (!plan.limits.reports) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-10 pb-28 md:pb-10">
+        <ActiveWorkspaceSync workspaceId={workspace?.id ?? null} />
         <h1 className="text-3xl font-extrabold">التقارير</h1>
         <p className="mt-3 leading-7 text-slate-300">
           التقارير ضمن باقة الفرق والمنشآت. باقة مساحة العمل: {plan.name}.
@@ -57,6 +72,7 @@ export default async function ReportsPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 pb-28 md:pb-10">
+      <ActiveWorkspaceSync workspaceId={workspace?.id ?? null} />
       <h1 className="text-3xl font-extrabold">تقارير المساحة</h1>
       <p className="mt-2 text-slate-300">{workspace?.name ?? "مساحة العمل"}</p>
       <section className="mt-8 grid gap-4 sm:grid-cols-2">

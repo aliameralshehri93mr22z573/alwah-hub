@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { completeOnboarding, ensureWorkspace } from "@/lib/onboarding";
 import { isTemplateType, type TemplateType } from "@/lib/templates";
+import { resolveCurrentWorkspace } from "@/lib/workspace";
 import { createClient } from "@/utils/supabase/server";
 import { isSupabaseConfigured } from "@/utils/supabase/env";
 
@@ -33,5 +34,6 @@ export async function applyBoardTemplate(templateType: string) {
     return { error: message };
   }
 
-  redirect("/dashboard");
+  const workspace = await resolveCurrentWorkspace(supabase, user.id);
+  redirect(workspace ? `/dashboard?workspace=${workspace.id}` : "/dashboard");
 }

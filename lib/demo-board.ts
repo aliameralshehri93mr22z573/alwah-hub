@@ -8,6 +8,21 @@ export const DEMO_MEMBERS: WorkspaceMember[] = [
 
 export const DEMO_CURRENT_USER_ID = DEMO_MEMBERS[0].id;
 
+export function isIsolatedDemoBoard(board: {
+  id?: string | null;
+  title?: string | null;
+  template_type?: string | null;
+}) {
+  const id = board.id ?? "";
+  const title = (board.title ?? "").trim();
+  return (
+    id === "demo" ||
+    id.startsWith("demo-") ||
+    board.template_type === "sales" ||
+    title === "مسار المبيعات"
+  );
+}
+
 export function createDemoBoard(): BoardData {
   const template = BOARD_TEMPLATES.sales;
   const now = new Date().toISOString();

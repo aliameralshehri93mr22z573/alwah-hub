@@ -272,6 +272,12 @@ begin
   on conflict (id) do update
     set email = coalesce(excluded.email, public.profiles.email);
 
+  if coalesce(new.raw_user_meta_data ->> 'skip_workspace', '') = 'true'
+     or coalesce(new.raw_user_meta_data ->> 'invite_email', '') <> ''
+  then
+    return new;
+  end if;
+
   insert into public.workspaces (name, owner_id)
   select
     'مساحة العمل' || case when v_full_name <> '' then ' — ' || v_full_name else '' end,
@@ -308,6 +314,31 @@ drop trigger if exists on_workspace_created on public.workspaces;
 create trigger on_workspace_created
   after insert on public.workspaces
   for each row execute function public.handle_new_workspace();
+
+create or replace function public.guard_member_workspace_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.workspace_members wm
+    join public.workspaces w on w.id = wm.workspace_id
+    where wm.user_id = new.owner_id
+      and w.owner_id is distinct from new.owner_id
+  ) then
+    raise exception 'لا يمكن إنشاء مساحة عمل أخرى بعد الانضمام لمساحة مشتركة';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_member_workspace_insert on public.workspaces;
+create trigger guard_member_workspace_insert
+  before insert on public.workspaces
+  for each row execute function public.guard_member_workspace_insert();
 
 --------------------------------------------------------------------------------
 -- Row Level Security
@@ -762,6 +793,36 @@ begin
   end if;
 
   select full_name into v_full_name from public.profiles where id = v_user;
+
+  select wm.workspace_id into v_workspace
+  from public.workspace_members wm
+  join public.workspaces w on w.id = wm.workspace_id
+  where wm.user_id = v_user
+    and w.owner_id is distinct from v_user
+  order by
+    case
+      when coalesce(w.plan::text, 'free') in ('pro', 'agency', 'team') then 0
+      else 1
+    end,
+    w.created_at
+  limit 1;
+
+  if v_workspace is not null then
+    select id into v_board
+    from public.boards
+    where workspace_id = v_workspace
+    order by created_at
+    limit 1;
+
+    update public.profiles
+    set onboarded_at = coalesce(onboarded_at, now())
+    where id = v_user;
+
+    return json_build_object(
+      'workspace_id', v_workspace,
+      'board_id', v_board
+    );
+  end if;
 
   case p_template
     when 'sales' then

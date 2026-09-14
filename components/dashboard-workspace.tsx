@@ -34,6 +34,8 @@ export function DashboardWorkspace({
   usage,
   live,
   canInvite = true,
+  canManageBoards = true,
+  kpiAudience = "admin",
   kpis,
 }: {
   workspaceId: string | null;
@@ -42,6 +44,8 @@ export function DashboardWorkspace({
   usage: { boards: number; members: number; activeTasks: number } | null;
   live: boolean;
   canInvite?: boolean;
+  canManageBoards?: boolean;
+  kpiAudience?: "admin" | "member";
   kpis: WorkspaceKpis;
 }) {
   const router = useRouter();
@@ -152,9 +156,12 @@ export function DashboardWorkspace({
 
   return (
     <>
-      <DashboardKpis kpis={kpis} />
+      <DashboardKpis kpis={kpis} audience={kpiAudience} />
 
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
+      <section
+        id="boards"
+        className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6"
+      >
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold">الألواح</h2>
           <LanguageToggle />
@@ -179,15 +186,17 @@ export function DashboardWorkspace({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold">{board.title}</p>
-                    <button
-                      type="button"
-                      onClick={() => openRename(board)}
-                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
-                      aria-label={`تعديل اسم ${board.title}`}
-                      title="تعديل اسم اللوحة"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
+                    {canManageBoards ? (
+                      <button
+                        type="button"
+                        onClick={() => openRename(board)}
+                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
+                        aria-label={`تعديل اسم ${board.title}`}
+                        title="تعديل اسم اللوحة"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    ) : null}
                   </div>
                   {templateLabel ? (
                     <p className="mt-1 text-sm text-accent">{templateLabel}</p>
@@ -214,27 +223,36 @@ export function DashboardWorkspace({
           </ul>
         )}
 
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => void onCreateBoard()}
-            disabled={pending === "board"}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            {pending === "board" ? "جارٍ الإنشاء…" : "لوحة جديدة"}
-          </button>
-          {!live ? (
-            <Link
-              href="/dashboard/boards/demo"
-              className="inline-flex items-center justify-center rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              تجربة إدارة المهام
-            </Link>
-          ) : null}
-        </div>
+        {canManageBoards || !live ? (
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            {canManageBoards ? (
+              <button
+                type="button"
+                onClick={() => void onCreateBoard()}
+                disabled={pending === "board"}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
+              >
+                <Plus className="size-4" />
+                {pending === "board" ? "جارٍ الإنشاء…" : "لوحة جديدة"}
+              </button>
+            ) : null}
+            {!live ? (
+              <Link
+                href="/dashboard/boards/demo"
+                className="inline-flex items-center justify-center rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                تجربة إدارة المهام
+              </Link>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-5 text-sm text-slate-400">
+            الألواح يحددها مدير المدرسة داخل مساحة العمل المشتركة.
+          </p>
+        )}
       </section>
 
+      {canInvite || !live ? (
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
         <h2 className="text-xl font-bold">دعوة الأعضاء</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -306,6 +324,7 @@ export function DashboardWorkspace({
           <p className="mt-2 text-sm text-red-300">{inviteError}</p>
         ) : null}
       </section>
+      ) : null}
 
       <UpgradeModal reason={modal} onClose={() => setModal(null)} />
 
